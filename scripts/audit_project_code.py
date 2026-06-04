@@ -241,6 +241,8 @@ def classify_script(path: Path) -> tuple[str, str]:
         return "current_method", "canonical sparse-prompt CTV preprocessing workflow"
     if name == "audit_project_code.py":
         return "maintenance", "project audit and cleanliness checks"
+    if name == "deploy_to_github_pages.sh":
+        return "maintenance", "GitHub repository and user-page deployment helper"
     if name in {"notify_on_completion.sh"}:
         return "utility", "runtime helper"
     if name.startswith(("apply_vsi_", "sync_vsi_", "verify_vsi_", "create_vsi_")):

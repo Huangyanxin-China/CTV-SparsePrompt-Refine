@@ -63,6 +63,14 @@ Static GitHub Pages showcase:
 python -m http.server 8000 --directory site
 ```
 
+GitHub repository and user-page deployment, after setting a GitHub token:
+
+```bash
+export GITHUB_TOKEN='YOUR_TOKEN_HERE'
+bash scripts/deploy_to_github_pages.sh
+unset GITHUB_TOKEN
+```
+
 Project audit:
 
 ```bash
@@ -98,4 +106,10 @@ For a detailed file-by-file implementation index, see:
 
 ```text
 docs/method_implementation_code_locations_20260604.md
+```
+
+For deployment details, see:
+
+```text
+docs/github_deployment_20260604.md
 ```
