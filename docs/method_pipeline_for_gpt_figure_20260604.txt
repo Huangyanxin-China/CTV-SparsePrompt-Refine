@@ -1,0 +1,610 @@
+Title: Complete data pipeline and network flow for the CTV sparse-prompt refinement method
+
+Purpose of this document:
+This text is intended to be copied into GPT or a figure-generation tool to create a Method figure.
+The figure should clearly show the full data flow from global CT to OAR segmentation, sparse CTV
+prompt processing, SDF core-envelope preprocessing, and the final OAR/SDF-constrained refine network.
+
+Do not show any patient identifier, real case ID, date, hospital name, or private data path in the figure.
+Use generic labels such as "Planning CT", "OAR masks", "Sparse CTV prompts", and "Final refined CTV".
+
+
+1. Overall method pipeline
+--------------------------
+
+The complete method is an anatomy-aware sparse-prompt CTV completion workflow.
+It has two upstream branches and one fusion/refinement branch.
+
+Branch A: OAR anatomical preprocessing
+
+    Planning CT
+        ->
+    OAR segmentation network
+        ->
+    Multi-class OAR masks
+        ->
+    OAR-derived anatomical context
+        ->
+    Thoracic ROI / spinal cord exclusion / anatomy ROI
+
+Branch B: Sparse CTV prompt preprocessing
+
+    K=7 sparse 2D CTV prompt slices
+        ->
+    2D signed distance field conversion
+        ->
+    3D SDF propagation along the axial direction
+        ->
+    Multi-candidate pseudo-target generation
+        ->
+    Support map
+        ->
+    Core-envelope prior
+        ->
+    Support-intersection pseudo-label
+
+Fusion/refinement branch:
+
+    CT + OAR context + sparse prompt + pseudo-label + support + core-envelope
+        ->
+    OAR/SDF-constrained refine network
+        ->
+    Final refined CTV
+
+High-level figure layout suggestion:
+
+    Left: full 3D planning CT.
+    Upper middle: OAR segmentation network and OAR masks.
+    Lower middle: sparse CTV prompt slices and SDF propagation.
+    Right middle: core-envelope and support-intersection pseudo-label.
+    Far right: refine network and final refined CTV.
+
+Use arrows to show that OAR context and sparse-prompt SDF features are fused before the refine network.
+
+
+2. Input data
+-------------
+
+For each case, the raw aligned data are:
+
+    I_CT: planning CT volume, shape D x H x W.
+    M_OAR_GT: OAR labels used to train/evaluate the OAR segmentation network.
+    Y_CTV_GT: complete expert CTV mask used only for supervised training and final evaluation.
+    P: sparse CTV prompt slices at test time.
+
+At test time, the method uses:
+
+    CT image
+    predicted OAR masks
+    K=7 sparse 2D CTV prompt masks
+
+At test time, complete CTV ground truth is not used for inference.
+It is used only for final metrics.
+
+
+3. OAR segmentation network
+---------------------------
+
+The OAR segmentation module is a CT-only multi-class nnU-Net v2 3D full-resolution model.
+It is used as an auxiliary anatomical preprocessing module.
+It is not the final CTV segmentation network.
+
+OAR network input:
+
+    I_CT in R^(1 x D x H x W)
+
+OAR network output:
+
+    P_OAR in R^(5 x D x H x W)
+
+The five classes are:
+
+    0 background
+    1 lung
+    2 heart
+    3 spinal cord
+    4 esophagus
+
+The predicted OAR mask is:
+
+    M_OAR(v) = argmax_c P_OAR,c(v)
+
+Actual OAR network configuration in this project:
+
+    Network family: nnU-Net v2
+    Configuration: 3d_fullres
+    Architecture: PlainConvUNet
+    Input channels: 1 CT channel
+    Output classes: 5 classes
+    Patch size: [56, 192, 192]
+    Batch size: 2
+    Target spacing: [3.0, 1.0088, 1.0088] mm
+    Normalization: CTNormalization
+
+Encoder-decoder structure:
+
+    Stage 0: 32 feature channels
+    Stage 1: 64 feature channels
+    Stage 2: 128 feature channels
+    Stage 3: 256 feature channels
+    Stage 4: 320 feature channels
+    Stage 5: 320 feature channels
+
+Each stage contains:
+
+    3D convolution
+    InstanceNorm3d
+    LeakyReLU
+    2 convolution blocks per stage
+
+The data flow through the OAR network is:
+
+    Planning CT
+        ->
+    resampling to nnU-Net target spacing
+        ->
+    CT intensity normalization
+        ->
+    3D patch sampling / sliding-window inference
+        ->
+    3D encoder
+        ->
+    bottleneck context aggregation
+        ->
+    3D decoder with skip connections
+        ->
+    voxel-wise OAR logits
+        ->
+    softmax
+        ->
+    argmax multi-class OAR mask
+
+Suggested figure element:
+Draw the OAR network as a compact 3D U-Net block labeled:
+
+    "OAR nnU-Net v2, 3D full-resolution"
+
+Next to it, show colored masks for:
+
+    lung, heart, spinal cord, esophagus
+
+
+4. OAR-derived anatomical context
+---------------------------------
+
+The OAR mask is converted into downstream anatomical constraints and context.
+
+From M_OAR, derive:
+
+    M_lung
+    M_heart
+    M_spinal
+    M_esophagus
+    anatomy ROI
+    spinal cord exclusion mask
+
+In the current implemented refine-network input, the OAR-derived channels are:
+
+    spinal mask
+    anatomy ROI
+
+The anatomy ROI is built from inference-available OAR masks, sparse prompt, and pseudo-label.
+It acts as a legal anatomical search region around the relevant thoracic anatomy.
+
+The spinal cord mask acts as a safety exclusion cue.
+In SDF envelope generation, spinal cord voxels can be removed from the candidate envelope,
+while prompt voxels are always preserved.
+
+Conceptually, the OAR branch provides:
+
+    anatomical search space
+    safety exclusion
+    organ-location context
+
+Important figure wording:
+
+    "OAR masks do not directly define the CTV."
+    "They constrain where sparse-prompt CTV completion is allowed to refine."
+
+
+5. Sparse CTV prompt branch
+---------------------------
+
+The CTV prompt is a small number of 2D full-slice target masks.
+
+Current main setting:
+
+    K = 7 prompt slices
+
+Prompt notation:
+
+    P = {Y_z1, Y_z2, ..., Y_zK}
+
+The sparse prompt is converted into a 3D CTV prior by SDF propagation.
+
+Step 1: convert each prompt mask into a 2D signed distance field:
+
+    S_zk(x, y) = signed_distance(Y_zk)
+
+Step 2: propagate/interpolate the SDF along the z axis:
+
+    {S_zk}_{k=1..K} -> S_pseudo(x, y, z)
+
+Step 3: convert the propagated SDF into a pseudo mask:
+
+    Y_sdf(v) = 1[S_pseudo(v) <= 0]
+
+This branch should be drawn as:
+
+    Sparse CTV prompt slices
+        ->
+    SDF conversion
+        ->
+    z-axis SDF propagation
+        ->
+    initial 3D pseudo CTV
+
+
+6. Multi-candidate support and core-envelope prior
+--------------------------------------------------
+
+Instead of trusting a single propagated mask, the method generates multiple CTV candidates:
+
+    Y_1, Y_2, ..., Y_M
+
+These candidates are produced from SDF propagation variants such as:
+
+    expansion variants
+    shrink variants
+    smoothing variants
+    different support thresholds
+    z-axis propagation variants
+
+The support map is:
+
+    A(v) = (1 / M) * sum_m 1[v in Y_m]
+
+Interpretation:
+
+    High A(v): voxel is consistently supported by many candidates.
+    Low A(v): voxel is unstable and likely uncertain.
+
+Core-envelope construction:
+
+    Core C = high-confidence foreground region
+    Envelope E = high-recall candidate search region
+    Uncertain region U = E - C
+
+The structural constraint is:
+
+    C subset Y_final subset E
+
+Figure suggestion:
+
+Show three nested masks:
+
+    Core C: small high-confidence inner region, colored green.
+    Envelope E: larger candidate boundary, colored orange.
+    Uncertain region U = E - C: shaded transparent region.
+
+
+7. Support-intersection pseudo-label
+------------------------------------
+
+The current strongest non-network pseudo-label is the support-intersection pseudo-label.
+
+It combines:
+
+    SDF output
+    support-consistent region
+    prompt preservation
+    core-envelope constraint
+
+Simplified expression:
+
+    Y_pseudo = support_intersection(Y_sdf, A, C, E, P)
+
+The pseudo-label satisfies:
+
+    prompt voxels are preserved
+    pseudo-label remains inside the envelope
+    low-support unstable regions are suppressed
+
+In the implemented K=7 rule, the method can choose between:
+
+    support_100
+    linear_core_intersection
+
+using a train-calibrated feature:
+
+    feature = volume(core) / volume(sdf_base)
+
+The figure does not need to show this decision rule in detail unless an ablation panel is needed.
+For the main Method figure, show it as:
+
+    "Support-intersection rule"
+        ->
+    "Y_pseudo"
+
+
+8. Refine network input feature tensor
+--------------------------------------
+
+The refine network receives a cropped 3D ROI rather than the whole CT volume.
+The crop is computed from:
+
+    envelope OR prompt OR pseudo-label OR anatomy ROI
+
+The crop is padded and adjusted to a valid patch/ROI size.
+
+Current implemented input tensor has 9 channels:
+
+    Channel 1: normalized CT
+    Channel 2: support-intersection pseudo-label
+    Channel 3: core mask
+    Channel 4: envelope mask
+    Channel 5: sparse prompt mask
+    Channel 6: support map
+    Channel 7: spinal cord mask
+    Channel 8: anatomy ROI mask
+    Channel 9: normalized z-distance to nearest prompt slice
+
+Tensor notation:
+
+    X_refine = concat(
+        CT_norm,
+        Y_pseudo,
+        C,
+        E,
+        P,
+        A,
+        M_spinal,
+        R_anatomy,
+        D_z
+    )
+
+    X_refine in R^(9 x d x h x w)
+
+CT normalization:
+
+    CT is clipped to [-1000, 1000] HU
+    CT_norm = (clip(CT, -1000, 1000) + 1000) / 1000 - 1
+
+z-distance channel:
+
+    D_z(v) = normalized axial distance to the nearest prompt slice
+    clipped to [0, 1]
+
+Training target:
+
+    complete expert CTV mask
+
+Important:
+
+    The pseudo-label is an input feature.
+    The expert CTV is the supervised target.
+    The network is not trained to reproduce the pseudo-label as ground truth.
+
+
+9. Refine network architecture
+------------------------------
+
+The refine model is a lightweight residual 3D U-Net:
+
+    SDFRefineNet
+
+Implemented architecture:
+
+    Input channels: 9
+    Output channels: 1
+    Base filters: 8 in the current training script
+    Encoder levels: 3 downsampling levels + bridge
+    Decoder levels: 3 upsampling levels
+    Skip connections: encoder-to-decoder concatenation
+    Output: one voxel-wise CTV inclusion logit
+
+Detailed channel flow if base_filters = f:
+
+    Input X: 9 channels
+        ->
+    Encoder block 1: f channels
+        ->
+    MaxPool3d
+        ->
+    Encoder block 2: 2f channels
+        ->
+    MaxPool3d
+        ->
+    Encoder block 3: 4f channels
+        ->
+    MaxPool3d
+        ->
+    Bridge block: 8f channels
+        ->
+    Transposed conv upsample
+        ->
+    Concatenate with encoder block 3
+        ->
+    Decoder block 3: 4f channels
+        ->
+    Transposed conv upsample
+        ->
+    Concatenate with encoder block 2
+        ->
+    Decoder block 2: 2f channels
+        ->
+    Transposed conv upsample
+        ->
+    Concatenate with encoder block 1
+        ->
+    Decoder block 1: f channels
+        ->
+    1 x 1 x 1 convolution
+        ->
+    CTV inclusion logit
+
+Each residual block contains:
+
+    Conv3d kernel 3
+    GroupNorm
+    ReLU
+    Conv3d kernel 3
+    GroupNorm
+    residual shortcut
+    ReLU
+
+If input and output channels differ, the shortcut uses:
+
+    1 x 1 x 1 Conv3d + GroupNorm
+
+Figure suggestion:
+Draw this network as a compact residual 3D U-Net:
+
+    9-channel input stack
+        ->
+    Encoder: f, 2f, 4f
+        ->
+    Bridge: 8f
+        ->
+    Decoder: 4f, 2f, f
+        ->
+    1-channel probability map
+
+Label the skip connections clearly.
+
+
+10. Refine network training and inference flow
+----------------------------------------------
+
+Training:
+
+    Input:
+        X_refine = 9-channel feature tensor
+
+    Target:
+        Y_CTV_GT = complete expert CTV mask
+
+    Loss:
+        masked BCE with logits + Dice loss
+
+    Loss mask:
+        envelope OR ground-truth CTV OR prompt
+
+    Validation:
+        choose checkpoint and probability threshold on validation split
+
+Inference:
+
+    CT + predicted OAR + K=7 sparse CTV prompts
+        ->
+    generate X_refine
+        ->
+    SDFRefineNet
+        ->
+    probability map P_refine
+
+Final constrained mask:
+
+    Y_final = (P_refine >= threshold AND E) OR P
+
+where:
+
+    E = envelope
+    P = sparse prompt mask
+
+This means:
+
+    predictions outside the envelope are suppressed
+    sparse prompt voxels are always preserved
+
+The final output is a refined 3D CTV mask.
+
+
+11. Recommended Method figure panels
+------------------------------------
+
+Recommended figure title:
+
+    Anatomy-aware sparse-prompt CTV completion and refinement
+
+Panel A: Input and OAR preprocessing
+
+    Show a 3D planning CT.
+    Arrow to OAR nnU-Net.
+    Show multi-class OAR masks: lung, heart, spinal cord, esophagus.
+    Show derived anatomy ROI and spinal exclusion.
+
+Panel B: Sparse CTV prompt to SDF pseudo-label
+
+    Show K=7 axial prompt slices.
+    Show 2D SDF conversion.
+    Show z-axis SDF propagation.
+    Show initial pseudo CTV.
+
+Panel C: Support/core-envelope preprocessing
+
+    Show multiple candidate masks.
+    Show support map A(v).
+    Show core C, envelope E, and uncertain region U = E - C.
+    Show support-intersection pseudo-label.
+
+Panel D: Refine network
+
+    Show 9-channel input tensor:
+        CT_norm
+        pseudo-label
+        core
+        envelope
+        prompt
+        support
+        spinal mask
+        anatomy ROI
+        z-distance
+
+    Show residual 3D U-Net:
+        encoder -> bridge -> decoder with skip connections
+
+    Show probability map and constrained fusion:
+        Y_final = (P_refine >= threshold AND envelope) OR prompt
+
+Panel E: Output and evaluation
+
+    Show final refined CTV overlay on CT.
+    Mention metrics:
+        Dice
+        unseen-slice Dice
+        HD95
+        ASD
+
+Do not make the figure look like generic CT-only automatic segmentation.
+The key message is:
+
+    OAR segmentation provides anatomical context.
+    Sparse CTV prompts define the target instance.
+    SDF/support/core-envelope preprocessing generates a constrained pseudo-label.
+    The refine network performs pseudo-to-true correction inside the allowed region.
+
+
+12. Very short figure caption draft
+-----------------------------------
+
+The proposed pipeline first segments thoracic OARs from the planning CT using a
+3D nnU-Net, producing anatomical ROI and safety constraints. Sparse 2D CTV prompt
+slices are converted into signed distance fields and propagated through the volume
+to generate multiple candidate pseudo-targets. Candidate support is aggregated into
+a core-envelope prior, yielding a support-intersection pseudo-label. A lightweight
+residual 3D U-Net then refines the pseudo-label using CT intensity, prompt, support,
+core-envelope, and OAR-derived context, and the final CTV is constrained to remain
+inside the envelope while preserving the prompted slices.
+
+
+13. One-line pipeline for the top of the figure
+-----------------------------------------------
+
+Planning CT -> OAR nnU-Net -> OAR ROI/context
+        +
+K=7 sparse CTV prompts -> SDF propagation -> support/core-envelope pseudo-label
+        ->
+9-channel OAR/SDF-constrained refine network
+        ->
+final refined CTV
