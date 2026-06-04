@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local clinical data and derived medical images
+data/
+dcm/
+nnunet_runs/
+external_runs/
+external_runs_umamba_bs1/
+checkpoints/
+*.nii
+*.nii.gz
+*.dcm
+
+# Model artifacts
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.model
+*.npz
+
+# Large/generated experiment outputs
+results/
+logs/
+reports/
+reports/html_ctv_visualization/assets/
+reports/html_oar_visualization/assets/
+reports/html_ctv_visualization/
+reports/html_oar_visualization/
+reports/best_ctv_method_vs_best_baseline_20260603/nii/
+reports/best_ctv_method_vs_best_baseline_20260603/assets/
+reports/best_ctv_method_vs_best_baseline_20260603/slices/
+reports/best_ctv_method_vs_best_baseline_20260603/cases/
+reports/reference/
+reports/ppt/
+reports/_archive_legacy_docs_20260603/
+reports/paper_visualization_index/
+transfer_packages/
+*.zip
+*.tar.gz
+
+# Public/controlled-access data mirrors
+public_data/
+gtv_ctv_repro_package_20260604/nnUNet_raw_GTV_CTV_Organ/
+gtv_ctv_repro_package_20260604/outputs/
+gtv_ctv_repro_package_20260604/resources/
+gtv_ctv_repro_package_20260604/PACKAGE_MANIFEST.csv
+
+# Local agent/research-cockpit state
+.agents/
+.codex/
+research_cockpit/
+
+# Local historical/private experiment traces
+scripts/archive/
+docs/experiment_plan.md
+docs/historical_experiment_archive_manifest.csv
+scripts/create_baseline_visualizations.py
+scripts/create_best_method_tex_project.py
+scripts/create_best_method_word_report.py
+scripts/create_ctv_onepage_workflow_ppt.py
+scripts/create_method_ppt_visual_assets.py
+scripts/create_our_sdf_k7_visualization.py
+scripts/create_psi_experiment_audit_and_visuals.py
+scripts/create_sammed3d_sparse_prompt_visualization.py
+gtv_ctv_repro_package_20260604/code/report/
+
+# Local manuscript build products
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# OS/editor files
+.DS_Store
+*.swp
+*.swo

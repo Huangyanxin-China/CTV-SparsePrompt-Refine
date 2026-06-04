@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\caption{Auxiliary OAR segmentation used for deployable anatomical context.}
+\label{tab:oar-context-results}
+\begin{threeparttable}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{2}{c}{nnU-Net} & \multicolumn{2}{c}{DiffUNet} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Organ & DSC & HD95 (mm) & DSC & HD95 (mm) \\
+\midrule
+Lung & $0.976 \pm 0.021$ & $3.50 \pm 2.48$ & $0.970 \pm 0.021$ & $4.69 \pm 2.96$ \\
+Heart & $0.913 \pm 0.175$ & $7.10 \pm 6.14$ & $0.894 \pm 0.174$ & $8.71 \pm 7.40$ \\
+Spinal cord & $0.872 \pm 0.195$ & $16.89 \pm 61.71$ & $0.846 \pm 0.106$ & $11.33 \pm 34.82$ \\
+Esophagus & $0.820 \pm 0.174$ & $4.48 \pm 4.99$ & $0.635 \pm 0.168$ & $9.57 \pm 9.14$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item OAR segmentation defines the anatomical ROI and safety context for CTV completion. The OAR module is reported as an auxiliary deployability component rather than as the primary CTV-performance driver.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

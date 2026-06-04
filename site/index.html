@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTV Sparse-Prompt Refinement</title>
+  <meta name="description" content="Sparse-prompt CTV completion with SDF core-envelope preprocessing and constrained pseudo-to-true refinement.">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2933;
+      --muted: #5d6b7a;
+      --line: #d8dee7;
+      --panel: #f7f9fb;
+      --accent: #0a7f6a;
+      --accent-2: #1f6fb2;
+      --warn: #c95f00;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--white);
+      line-height: 1.55;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #f4f8f7 100%);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 56px 0 42px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 0 0 24px;
+      font-size: 19px;
+      color: var(--muted);
+      max-width: 68ch;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: var(--white);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--white);
+    }
+
+    .figure-frame {
+      border: 1px solid var(--line);
+      background: var(--white);
+      padding: 10px;
+    }
+
+    .figure-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    main {
+      padding: 36px 0 64px;
+    }
+
+    section {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      border-radius: 6px;
+    }
+
+    .metric .value {
+      display: block;
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1.1;
+    }
+
+    .metric .label {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 6px;
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px 9px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      border-top: 2px solid var(--ink);
+      border-bottom: 1.5px solid var(--ink);
+      background: #fbfcfd;
+      font-weight: 800;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--white);
+      margin: 2px 4px 2px 0;
+    }
+
+    code {
+      font-family: Consolas, Menlo, monospace;
+      background: #eef3f6;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    pre {
+      overflow: auto;
+      padding: 14px;
+      background: #101820;
+      color: #f5fbff;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    footer {
+      padding: 28px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      .wrap {
+        width: min(100% - 28px, 1120px);
+      }
+
+      .hero,
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap hero">
+      <div>
+        <p class="eyebrow">Radiotherapy target preprocessing</p>
+        <h1>CTV Sparse-Prompt Refinement</h1>
+        <p class="lead">
+          A data-preprocessing workflow for clinical target volume completion:
+          sparse 2D target prompts are converted into SDF core-envelope priors,
+          constrained by OAR context, and refined by a supervised pseudo-to-true
+          correction network.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">Project repository</a>
+          <a class="button" href="#results">View results</a>
+          <a class="button" href="#code">Reproduce workflow</a>
+        </div>
+      </div>
+      <div class="figure-frame">
+        <img src="assets/workflow_with_network.png" alt="Workflow diagram showing CT, OAR ROI, sparse prompts, SDF core-envelope prior, and refine network.">
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Problem framing</h2>
+      <p>
+        The task is not framed as fully automatic CTV segmentation from CT alone.
+        Instead, the target is sparse-prompt CTV completion: a small number of
+        2D CTV prompt slices define the clinical target instance, while
+        anatomical context and SDF propagation produce a constrained 3D
+        candidate region.
+      </p>
+      <p>
+        This framing is intended for data preprocessing and target-mask
+        completion under limited expert annotation. Complete expert CTV masks
+        are used for retrospective training and evaluation, not as test-time
+        input.
+      </p>
+      <div>
+        <span class="tag">Planning CT</span>
+        <span class="tag">Sparse 2D prompts</span>
+        <span class="tag">SDF propagation</span>
+        <span class="tag">Core-envelope prior</span>
+        <span class="tag">OAR-constrained ROI</span>
+        <span class="tag">Pseudo-to-true refinement</span>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>Method summary</h2>
+      <div class="grid two">
+        <div>
+          <h3>Preprocessing stage</h3>
+          <p>
+            Sparse prompt slices are propagated along the axial direction as
+            signed distance fields. Multiple support candidates are aggregated
+            into a high-precision core and a high-recall envelope. The final
+            pseudo-label is selected by the support-intersection rule.
+          </p>
+          <h3>Refinement stage</h3>
+          <p>
+            The refine network receives CT, sparse prompt information, pseudo
+            SDF cues, core-envelope masks, and OAR-derived context. It predicts
+            inclusion in the constrained uncertain region rather than performing
+            unconstrained full-volume segmentation.
+          </p>
+        </div>
+        <div class="figure-frame">
+          <img src="assets/refine_network_architecture.png" alt="Refine network architecture.">
+        </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <h2>Main held-out CTV results</h2>
+      <div class="grid three">
+        <div class="metric">
+          <span class="value">0.928</span>
+          <span class="label">Support-intersection pseudo-label DSC</span>
+        </div>
+        <div class="metric">
+          <span class="value">0.934</span>
+          <span class="label">Refined output DSC</span>
+        </div>
+        <div class="metric">
+          <span class="value">25 / 31</span>
+          <span class="label">Test scans improved after refinement</span>
+        </div>
+      </div>
+
+      <table aria-label="CTV results table">
+        <thead>
+          <tr>
+            <th>Setting</th>
+            <th>Method</th>
+            <th>Test-time target information</th>
+            <th>DSC</th>
+            <th>uDSC</th>
+            <th>HD95</th>
+            <th>ASD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No prompt</td>
+            <td>nnU-Net 3D full-resolution</td>
+            <td>None</td>
+            <td>0.400 +/- 0.345</td>
+            <td>-</td>
+            <td>56.94 +/- 60.13</td>
+            <td>33.72 +/- 45.44</td>
+          </tr>
+          <tr>
+            <td>No prompt</td>
+            <td>DiffUNet</td>
+            <td>None</td>
+            <td>0.316 +/- 0.301</td>
+            <td>-</td>
+            <td>71.89 +/- 60.11</td>
+            <td>41.44 +/- 44.67</td>
+          </tr>
+          <tr>
+            <td>Sparse prompt</td>
+            <td>SAM-Med3D, sparse target prompt</td>
+            <td>K=7 target slices</td>
+            <td>0.422 +/- 0.159</td>
+            <td>-</td>
+            <td>21.32 +/- 9.23</td>
+            <td>5.54 +/- 3.06</td>
+          </tr>
+          <tr>
+            <td>Sparse prompt</td>
+            <td>Linear mask interpolation</td>
+            <td>K=7 target slices</td>
+            <td>0.912 +/- 0.048</td>
+            <td>0.876 +/- 0.057</td>
+            <td>3.90 +/- 1.66</td>
+            <td>1.22 +/- 0.66</td>
+          </tr>
+          <tr>
+            <td>Sparse prompt</td>
+            <td>Support-intersection pseudo-label</td>
+            <td>K=7 target slices</td>
+            <td>0.928 +/- 0.050</td>
+            <td>0.897 +/- 0.062</td>
+            <td>3.43 +/- 1.68</td>
+            <td>0.97 +/- 0.54</td>
+          </tr>
+          <tr>
+            <td>Sparse prompt</td>
+            <td><strong>Ours: OAR/SDF-constrained refine network</strong></td>
+            <td>K=7 target slices</td>
+            <td><strong>0.934 +/- 0.045</strong></td>
+            <td><strong>0.906 +/- 0.054</strong></td>
+            <td><strong>3.11 +/- 1.37</strong></td>
+            <td><strong>0.84 +/- 0.48</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        DSC is Dice similarity coefficient. uDSC excludes prompted slices.
+        Reported values are mean +/- standard deviation on 31 held-out CTV-positive scans.
+      </p>
+    </section>
+
+    <section id="visuals">
+      <h2>Visual evidence</h2>
+      <div class="grid two">
+        <div>
+          <h3>Dataset and CTV completion concept</h3>
+          <div class="figure-frame">
+            <img src="assets/sdf_completion_qualitative.png" alt="Dataset and CTV completion concept figure.">
+          </div>
+        </div>
+        <div>
+          <h3>Method comparison</h3>
+          <div class="figure-frame">
+            <img src="assets/method_visual_comparison_example.png" alt="CTV method visual comparison.">
+          </div>
+        </div>
+        <div>
+          <h3>Ablation progression</h3>
+          <div class="figure-frame">
+            <img src="assets/ablation_visual_progression_example.png" alt="Ablation visual progression.">
+          </div>
+        </div>
+        <div>
+          <h3>GTV and CTV difference</h3>
+          <div class="figure-frame">
+            <img src="assets/gtv_ctv_difference_example.png" alt="GTV and CTV difference illustration.">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="oar">
+      <h2>OAR context</h2>
+      <p>
+        OAR segmentation is used as anatomical context for the legal search
+        space and downstream refinement. It is not presented as the main
+        contribution, but it anchors the CTV completion workflow to clinically
+        plausible thoracic anatomy.
+      </p>
+      <div class="figure-frame">
+        <img src="assets/oar_segmentation_dice.png" alt="OAR segmentation Dice comparison.">
+      </div>
+    </section>
+
+    <section id="code">
+      <h2>Code entry points</h2>
+      <p>
+        The public repository excludes private CT volumes, labels, checkpoints,
+        and generated prediction masks. The uploaded code preserves the
+        workflow scripts, lightweight figures, manuscript tables, and audit
+        notes needed to inspect the method.
+      </p>
+      <pre><code>pip install -r requirements.txt
+python scripts/run_sparse_prompt_core_envelope_workflow.py --help
+python scripts/run_k7_preprocess_variant_screen.py --help
+python scripts/train_ctv_pseudo_refine_net.py --help
+python scripts/evaluate_ctv_refine_safety_fusion.py --help</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      CTV Sparse-Prompt Refinement. Public materials are anonymized and exclude
+      private clinical imaging data.
+    </div>
+  </footer>
+</body>
+</html>
