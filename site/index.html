@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CTV Sparse-Prompt Refinement</title>
-  <meta name="description" content="An anonymized public project page for sparse-prompt CTV refinement code, environment setup, and synthetic visual demos.">
+  <meta name="description" content="An anonymized public project page for sparse-prompt CTV refinement code, environment setup, synthetic demos, and de-identified mask-only result visualizations.">
   <style>
     :root {
       color-scheme: light;
@@ -316,6 +316,27 @@
       height: auto;
     }
 
+    .result-panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .result-panel img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .result-body {
+      padding: 20px 22px 22px;
+    }
+
+    .result-body .button {
+      margin-top: 6px;
+    }
+
     .tag-row {
       display: flex;
       flex-wrap: wrap;
@@ -438,6 +459,7 @@
       <div class="navlinks">
         <a href="#method">Method</a>
         <a href="#demo">Demo</a>
+        <a href="#results">Results</a>
         <a href="#setup">Setup</a>
         <a href="#privacy">Privacy</a>
         <a href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">GitHub</a>
@@ -452,12 +474,13 @@
       <h1>CTV completion from sparse target prompts</h1>
       <p class="lead">
         A public implementation of SDF propagation, core-envelope candidate
-        construction, and pseudo-to-true 3D refinement. This page uses only
-        synthetic visualizations; private clinical data and dataset details are
-        not included.
+        construction, and pseudo-to-true 3D refinement. This page includes a
+        synthetic workflow demo and de-identified mask-only result displays;
+        private clinical data and dataset details are not included.
       </p>
       <div class="actions">
         <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">Open repository</a>
+        <a class="button" href="#results">Result displays</a>
         <a class="button" href="#setup">Installation</a>
         <a class="button" href="#privacy">Privacy checks</a>
       </div>
@@ -481,7 +504,7 @@
         </div>
         <div class="summary-item">
           <strong>Private by design</strong>
-          <span>Ships no clinical images, labels, case IDs, checkpoints, or private dataset statistics.</span>
+          <span>Ships no raw medical images, label volumes, case IDs, checkpoints, or private dataset statistics.</span>
         </div>
       </div>
     </section>
@@ -549,6 +572,50 @@
       </div>
     </section>
 
+    <section id="results">
+      <div class="section-head">
+        <h2>Real-Result Visual Display</h2>
+        <p>
+          The result displays are derived from one real segmentation output but
+          are rendered as anonymized masks only. No raw CT voxels, case
+          identifiers, acquisition dates, private paths, or clinical metadata
+          are present in these public assets.
+        </p>
+      </div>
+      <div class="grid two">
+        <div class="panel result-panel">
+          <a href="real-results/single-case-complete-slices.html">
+            <img src="assets/real_single_case_slice_mosaic.png" alt="Anonymized mask-only complete slice mosaic">
+          </a>
+          <div class="result-body">
+            <h3>Single-Case Complete Slice Gallery</h3>
+            <p>
+              A complete target-range axial gallery shows all sequential slices
+              from the anonymized result, with reference and sparse-prompt
+              refinement masks overlaid.
+            </p>
+            <a class="button primary" href="real-results/single-case-complete-slices.html">Open gallery</a>
+          </div>
+        </div>
+        <div class="panel result-panel">
+          <img src="assets/real_multi_method_comparison.png" alt="Static mask-only multi-method segmentation comparison">
+          <div class="result-body">
+            <h3>Static Multi-Method Comparison</h3>
+            <p>
+              A compact comparison contrasts generic preprocessing and
+              refinement variants against the expert reference contour without
+              exposing source volumes.
+            </p>
+            <div class="tag-row">
+              <span class="tag">Mask-only</span>
+              <span class="tag">Generic method labels</span>
+              <span class="tag">No raw image pixels</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="setup">
       <div class="section-head">
         <h2>Environment And Usage</h2>
@@ -592,13 +659,15 @@ pip install -r requirements.txt</code></pre>
         <div>
           <h2>Privacy Boundary</h2>
           <p>
-            Public release is limited to code, generic documentation, and
-            synthetic visual assets. Private data stays outside Git.
+            Public release is limited to code, generic documentation, synthetic
+            visual assets, and de-identified mask-only result renderings.
+            Private data stays outside Git.
           </p>
           <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/blob/main/docs/privacy_release_checklist.md">Open checklist</a>
         </div>
         <ul class="checklist">
           <li>No raw CT, DICOM, NIfTI, RTSTRUCT, or label volumes.</li>
+          <li>No raw medical image pixels inside real-result display assets.</li>
           <li>No local case IDs, acquisition dates, private study counts, or institution names.</li>
           <li>No checkpoints, generated predictions, logs, or experiment caches.</li>
           <li>No manuscript text or tables that disclose private dataset details.</li>
@@ -610,7 +679,7 @@ pip install -r requirements.txt</code></pre>
 
   <footer>
     <div class="wrap">
-      CTV Sparse-Prompt Refinement. Static public page with synthetic visuals only.
+      CTV Sparse-Prompt Refinement. Static public page with synthetic and de-identified mask-only visuals.
     </div>
   </footer>
 

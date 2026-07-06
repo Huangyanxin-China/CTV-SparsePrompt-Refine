@@ -6,12 +6,16 @@
 
 Public implementation of a sparse-prompt clinical target volume (CTV)
 refinement workflow. The repository provides method code, an anonymized dynamic
-demo, environment requirements, and command templates. Private clinical images,
-labels, model checkpoints, case identifiers, and study-level dataset details
-are not included.
+demo, de-identified mask-only result visualizations, environment requirements,
+and command templates. Private clinical images, label volumes, model
+checkpoints, case identifiers, and study-level dataset details are not included.
 
 <p align="center">
   <img src="site/assets/anonymous_sparse_prompt_demo.gif" width="760" alt="Animated synthetic sparse-prompt CTV refinement demo">
+</p>
+
+<p align="center">
+  <img src="site/assets/real_single_case_slice_mosaic.png" width="760" alt="Anonymized mask-only real-result slice mosaic">
 </p>
 
 ## What This Repository Contains
@@ -21,17 +25,30 @@ are not included.
 - Support-intersection preprocessing and K-value screening utilities.
 - A lightweight pseudo-to-true 3D refinement network.
 - Generic evaluation utilities for overlap and surface metrics.
-- A static GitHub Pages homepage with synthetic, non-clinical visualizations.
+- A static GitHub Pages homepage with synthetic and de-identified mask-only
+  visualizations.
 
 ## Data Privacy Boundary
 
-This public package intentionally excludes all private data and data-derived
-private artifacts. You will need to supply your own local data paths when
-running the scripts. Do not commit local data, generated predictions,
-checkpoints, logs, or institutional metadata.
+This public package intentionally excludes private raw data, reversible medical
+volumes, generated prediction volumes, and identifying metadata. You will need
+to supply your own local data paths when running the scripts. Do not commit
+local data, generated predictions, checkpoints, logs, or institutional
+metadata.
 
-The public examples use synthetic masks and abstract visualizations only. They
-are not derived from real patient images.
+The dynamic workflow demo uses synthetic masks. The real-result display assets
+are de-identified PNG/HTML renderings derived from segmentation masks only.
+They omit raw medical image pixels, local case names, acquisition dates, private
+paths, and clinical metadata.
+
+## Visual Result Pages
+
+- `site/index.html`: public homepage with workflow, setup, privacy boundary, and
+  result-display sections.
+- `site/real-results/single-case-complete-slices.html`: complete target-range
+  axial slice gallery for one anonymized result, rendered from masks only.
+- `site/assets/real_multi_method_comparison.png`: static multi-method
+  segmentation comparison using generic method labels and reference contours.
 
 ## Environment
 

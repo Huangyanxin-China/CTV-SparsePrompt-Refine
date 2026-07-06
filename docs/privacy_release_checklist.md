@@ -4,11 +4,14 @@ Use this checklist before pushing to a public GitHub repository.
 
 ## Required Scope
 
-- Keep method code, generic documentation, environment requirements, and
-  synthetic/anonymized visual assets.
-- Exclude raw or derived clinical images, labels, DICOM, NIfTI, model
-  checkpoints, generated prediction volumes, local logs, and manuscript files
-  that describe private data.
+- Keep method code, generic documentation, environment requirements, synthetic
+  visual assets, and de-identified mask-only result renderings.
+- Exclude raw clinical images, reversible medical volumes, labels, DICOM,
+  NIfTI, model checkpoints, generated prediction volumes, local logs, and
+  manuscript files that describe private data.
+- If real-result visualizations are included, they must be rendered PNG/HTML
+  views of masks only, with no raw medical image pixels, case names, acquisition
+  dates, private paths, or clinical metadata.
 - Avoid dataset-specific sample counts, split details, case identifiers,
   acquisition dates, institution names, server paths, or private study labels.
 
@@ -56,10 +59,15 @@ git status --ignored --short
 
 - Open `README.md` and confirm examples use placeholders such as
   `/path/to/local_dataset`.
-- Open `site/index.html` and confirm all visualizations are synthetic or
-  abstract, with no real case images or private result values.
+- Open `site/index.html` and confirm visualizations are synthetic or
+  de-identified mask-only renderings, with no raw real case images or private
+  result values.
 - Confirm `site/assets/anonymous_sparse_prompt_demo.gif` and
   `site/assets/anonymous_sparse_prompt_demo.png` are synthetic graphics.
+- Confirm `site/assets/real_single_case_slice_mosaic.png`,
+  `site/assets/real_multi_method_comparison.png`, and
+  `site/real-results/` contain only generic sequential slice labels and
+  mask-only renderings.
 - Confirm `.gitignore` covers local data, checkpoints, outputs, logs, archives,
   manuscript exports, and office documents.
 
