@@ -85,7 +85,7 @@ def build_candidates(gt: np.ndarray, gt_img, case_id: str, k: int, strategy: str
     shape = screen.prompt_shape_features(gt, selected_z)
     features = {
         "split": "test",
-        "patient": screen.patient_id(case_id),
+        "subject": screen.subject_id(case_id),
         "case": case_id,
         "selected_z": ";".join(str(int(z)) for z in selected_z),
         "n_selected": int(selected_z.size),
@@ -125,7 +125,7 @@ def metric_row(case_id: str, method: str, pred: np.ndarray, gt: np.ndarray, prom
     pred_voxels = int(pred.sum())
     return {
         "case": case_id,
-        "patient": screen.patient_id(case_id),
+        "subject": screen.subject_id(case_id),
         "method": method,
         "dice": wf.dice_score(pred, gt),
         "dice_unseen_slices": wf.dice_score(pred[~pzm], gt[~pzm]) if (~pzm).any() else float("nan"),
@@ -139,8 +139,8 @@ def metric_row(case_id: str, method: str, pred: np.ndarray, gt: np.ndarray, prom
     }
 
 
-def paired(rows: list[dict], a: str, b: str, patient_level: bool = False) -> dict:
-    key = "patient" if patient_level else "case"
+def paired(rows: list[dict], a: str, b: str, subject_level: bool = False) -> dict:
+    key = "subject" if subject_level else "case"
     by_key: dict[str, dict[str, list[float]]] = {}
     for row in rows:
         by_key.setdefault(row[key], {}).setdefault(row["method"], []).append(float(row["dice"]))
@@ -178,8 +178,8 @@ def write_csv(path: str, rows: list[dict]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--label_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTs"))
+    parser = argparse.ArgumentParser(description="Summarize K=7 sparse-prompt variant surface metrics for local labels.")
+    parser.add_argument("--label_dir", required=True, help="Local target-label directory.")
     parser.add_argument("--variant_summary", default=osp.join(ROOT, "results/data_preprocess_variant_screen_k7_20260602/summary.json"))
     parser.add_argument("--out_dir", default=osp.join(ROOT, "results/data_preprocess_variant_screen_k7_20260602"))
     parser.add_argument("--k", type=int, default=7)
@@ -209,7 +209,7 @@ def main() -> None:
 
     methods = ["linear", "sdf_core", "support_100", "linear_core_intersection", "train_calibrated_support_intersection_rule"]
     table = []
-    full = {"methods": {}, "paired_scan": {}, "paired_patient": {}, "threshold_rule": threshold_rule}
+    full = {"methods": {}, "paired_scan": {}, "paired_subject": {}, "threshold_rule": threshold_rule}
     for method in methods:
         sub = [r for r in rows if r["method"] == method]
         table.append(
@@ -233,7 +233,7 @@ def main() -> None:
     target = "train_calibrated_support_intersection_rule"
     for baseline in ["linear", "sdf_core", "support_100", "linear_core_intersection"]:
         full["paired_scan"][f"{target}_vs_{baseline}"] = paired(rows, target, baseline)
-        full["paired_patient"][f"{target}_vs_{baseline}"] = paired(rows, target, baseline, patient_level=True)
+        full["paired_subject"][f"{target}_vs_{baseline}"] = paired(rows, target, baseline, subject_level=True)
 
     write_csv(osp.join(args.out_dir, "surface_summary_table.csv"), table)
     with open(osp.join(args.out_dir, "surface_summary.json"), "w") as f:

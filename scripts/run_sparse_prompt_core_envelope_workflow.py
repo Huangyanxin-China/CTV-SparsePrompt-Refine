@@ -602,9 +602,9 @@ def main():
             "and core-envelope candidate-envelope screening."
         )
     )
-    parser.add_argument("--ct_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/imagesTs"))
-    parser.add_argument("--gt_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTs"))
-    parser.add_argument("--oar_dir", default=osp.join(ROOT, "external_runs/nnunet/nnunet_3d_fullres_folds234_final/oar"))
+    parser.add_argument("--ct_dir", required=True, help="Local CT image directory, for example /path/to/local_dataset/imagesTs.")
+    parser.add_argument("--gt_dir", required=True, help="Local target-label directory, for example /path/to/local_dataset/labelsTs.")
+    parser.add_argument("--oar_dir", required=True, help="Local OAR mask directory aligned with --ct_dir and --gt_dir.")
     parser.add_argument("--out_root", default=osp.join(ROOT, "results/next_sparse_prompt_core_envelope_workflow"))
     parser.add_argument("--target_label", type=int, default=1)
     parser.add_argument("--k_values", nargs="+", type=int, default=[3, 5, 7, 9])

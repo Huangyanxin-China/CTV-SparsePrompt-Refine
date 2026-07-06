@@ -3,7 +3,7 @@
 
 This is a lightweight data-preprocessing refinement module. It does not use
 test labels to tune the decision rule. The rule is calibrated on training cases
-and then applied once to the held-out test cases.
+and then applied once to the evaluation cases.
 """
 
 from __future__ import annotations
@@ -218,8 +218,8 @@ def paired_delta(metrics: list[dict], split: str, a: str, b: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train-calibrated data preprocessing chooser for K=7.")
-    parser.add_argument("--train_label_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTr"))
-    parser.add_argument("--test_label_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTs"))
+    parser.add_argument("--train_label_dir", required=True, help="Local training target-label directory.")
+    parser.add_argument("--test_label_dir", required=True, help="Local test target-label directory.")
     parser.add_argument("--out_dir", default=osp.join(ROOT, "results/data_preprocess_chooser_k7_20260602"))
     parser.add_argument("--k", type=int, default=7)
     parser.add_argument("--strategy", default="even_nonempty")

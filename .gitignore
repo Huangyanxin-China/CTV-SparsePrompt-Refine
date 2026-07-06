@@ -13,6 +13,10 @@ dcm/
 nnunet_runs/
 external_runs/
 external_runs_umamba_bs1/
+analysis_outputs/
+outputs/
+external_repos/
+tb_log/
 checkpoints/
 *.nii
 *.nii.gz
@@ -25,6 +29,7 @@ checkpoints/
 *.pkl
 *.model
 *.npz
+*.onnx
 
 # Large/generated experiment outputs
 results/
@@ -45,13 +50,22 @@ reports/paper_visualization_index/
 transfer_packages/
 *.zip
 *.tar.gz
+*.7z
+*.rar
+
+# Manuscript/submission exports and office files
+manuscript*/
+paper_submission*/
+*.docx
+*.pptx
+*.pdf
+*.spl
+~$*
 
 # Public/controlled-access data mirrors
 public_data/
-gtv_ctv_repro_package_20260604/nnUNet_raw_GTV_CTV_Organ/
-gtv_ctv_repro_package_20260604/outputs/
-gtv_ctv_repro_package_20260604/resources/
-gtv_ctv_repro_package_20260604/PACKAGE_MANIFEST.csv
+controlled_data/
+external_data/
 
 # Local agent/research-cockpit state
 .agents/

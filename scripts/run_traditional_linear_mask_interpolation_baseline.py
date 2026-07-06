@@ -119,10 +119,11 @@ def write_csv(path: str, rows: list[dict[str, object]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a traditional sparse-slice mask interpolation baseline.")
-    parser.add_argument("--gt_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTs"))
+    parser.add_argument("--gt_dir", required=True, help="Local target-label directory.")
     parser.add_argument(
         "--prompt_dir",
-        default=osp.join(ROOT, "external_runs/sammed3d_sparse_prompt/ctv_k7_even_nonempty_click7/_sparse_prompts"),
+        required=True,
+        help="Local sparse-prompt mask directory aligned with --gt_dir.",
     )
     parser.add_argument("--out_dir", default=osp.join(ROOT, "results/traditional_linear_mask_interpolation_k7"))
     parser.add_argument("--write_predictions", action="store_true")

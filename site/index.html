@@ -4,133 +4,226 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CTV Sparse-Prompt Refinement</title>
-  <meta name="description" content="Sparse-prompt CTV completion with SDF core-envelope preprocessing and constrained pseudo-to-true refinement.">
+  <meta name="description" content="An anonymized public project page for sparse-prompt CTV refinement code, environment setup, and synthetic visual demos.">
   <style>
     :root {
       color-scheme: light;
-      --ink: #1f2933;
-      --muted: #5d6b7a;
-      --line: #d8dee7;
-      --panel: #f7f9fb;
-      --accent: #0a7f6a;
-      --accent-2: #1f6fb2;
-      --warn: #c95f00;
-      --white: #ffffff;
+      --ink: #172026;
+      --muted: #52616f;
+      --line: #d6dee6;
+      --paper: #ffffff;
+      --soft: #f4f7f9;
+      --blue: #1f6fb2;
+      --teal: #0a7f6a;
+      --amber: #b56a12;
+      --red: #b84a4a;
+      --dark: #101820;
+      --shadow: 0 18px 50px rgba(23, 32, 38, 0.14);
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
       color: var(--ink);
-      background: var(--white);
+      background: var(--paper);
       line-height: 1.55;
     }
 
-    header {
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, #ffffff 0%, #f4f8f7 100%);
+    a {
+      color: inherit;
     }
 
-    .wrap {
-      width: min(1120px, calc(100% - 40px));
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(214, 222, 230, 0.9);
+      background: rgba(255, 255, 255, 0.93);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav {
+      width: min(1180px, calc(100% - 40px));
+      min-height: 58px;
       margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      font-weight: 800;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .navlinks {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .navlinks a {
+      text-decoration: none;
     }
 
     .hero {
-      padding: 56px 0 42px;
+      position: relative;
+      min-height: 620px;
       display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap: 32px;
       align-items: center;
+      overflow: hidden;
+      background: #f8fafb;
+      border-bottom: 1px solid var(--line);
+    }
+
+    #heroCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.88) 42%, rgba(255, 255, 255, 0.52) 72%, rgba(255, 255, 255, 0.2) 100%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(244, 247, 249, 0.94) 100%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 76px 0 112px;
     }
 
     .eyebrow {
       margin: 0 0 12px;
-      color: var(--accent);
-      font-weight: 700;
+      color: var(--teal);
+      font-size: 13px;
+      font-weight: 800;
       letter-spacing: 0;
       text-transform: uppercase;
-      font-size: 13px;
     }
 
     h1 {
+      max-width: 780px;
       margin: 0 0 18px;
-      font-size: clamp(34px, 5vw, 58px);
-      line-height: 1.03;
+      font-size: clamp(38px, 7vw, 76px);
+      line-height: 1.02;
       letter-spacing: 0;
     }
 
     .lead {
-      margin: 0 0 24px;
-      font-size: 19px;
+      max-width: 720px;
+      margin: 0 0 28px;
       color: var(--muted);
-      max-width: 68ch;
+      font-size: clamp(17px, 2vw, 21px);
     }
 
     .actions {
       display: flex;
-      gap: 12px;
       flex-wrap: wrap;
+      gap: 12px;
     }
 
     .button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 42px;
+      min-height: 44px;
       padding: 10px 16px;
       border: 1px solid var(--line);
       border-radius: 6px;
+      background: rgba(255, 255, 255, 0.92);
       color: var(--ink);
-      background: var(--white);
       text-decoration: none;
-      font-weight: 700;
+      font-weight: 800;
+      box-shadow: 0 1px 0 rgba(23, 32, 38, 0.04);
     }
 
     .button.primary {
-      border-color: var(--accent);
-      background: var(--accent);
-      color: var(--white);
-    }
-
-    .figure-frame {
-      border: 1px solid var(--line);
-      background: var(--white);
-      padding: 10px;
-    }
-
-    .figure-frame img {
-      width: 100%;
-      height: auto;
-      display: block;
+      border-color: var(--teal);
+      background: var(--teal);
+      color: #ffffff;
     }
 
     main {
-      padding: 36px 0 64px;
+      width: min(1180px, calc(100% - 40px));
+      margin: -54px auto 0;
+      position: relative;
+      z-index: 2;
+      padding-bottom: 72px;
     }
 
     section {
-      padding: 28px 0;
+      padding: 54px 0;
       border-bottom: 1px solid var(--line);
+    }
+
+    section:first-child {
+      padding-top: 0;
     }
 
     section:last-child {
       border-bottom: 0;
     }
 
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .summary-item {
+      min-height: 116px;
+      padding: 18px;
+      background: var(--paper);
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     h2 {
-      margin: 0 0 14px;
-      font-size: 28px;
+      margin: 0 0 16px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.08;
       letter-spacing: 0;
     }
 
     h3 {
-      margin: 22px 0 8px;
-      font-size: 19px;
+      margin: 0 0 8px;
+      font-size: 18px;
       letter-spacing: 0;
     }
 
@@ -138,9 +231,19 @@
       margin: 0 0 14px;
     }
 
+    .section-head {
+      max-width: 820px;
+      margin-bottom: 26px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 17px;
+    }
+
     .grid {
       display: grid;
-      gap: 20px;
+      gap: 18px;
     }
 
     .grid.two {
@@ -151,337 +254,494 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .metric {
+    .panel {
       border: 1px solid var(--line);
-      background: var(--panel);
-      padding: 18px;
-      border-radius: 6px;
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 22px;
     }
 
-    .metric .value {
-      display: block;
-      font-size: 30px;
-      font-weight: 800;
-      color: var(--accent);
-      line-height: 1.1;
-    }
-
-    .metric .label {
-      display: block;
-      margin-top: 6px;
+    .panel p,
+    .step p {
       color: var(--muted);
-      font-size: 14px;
     }
 
-    table {
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 178px;
+      padding: 20px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .step .index {
+      display: inline-flex;
+      width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      border-radius: 50%;
+      background: var(--dark);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .demo-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 24px;
+      align-items: center;
+    }
+
+    .demo-media {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f1720;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .demo-media img {
+      display: block;
       width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0 6px;
-      font-size: 15px;
+      height: auto;
     }
 
-    th,
-    td {
-      text-align: left;
-      padding: 10px 9px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-    }
-
-    th {
-      border-top: 2px solid var(--ink);
-      border-bottom: 1.5px solid var(--ink);
-      background: #fbfcfd;
-      font-weight: 800;
-    }
-
-    tbody tr:last-child td {
-      border-bottom: 2px solid var(--ink);
-    }
-
-    .note {
-      color: var(--muted);
-      font-size: 14px;
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
     }
 
     .tag {
-      display: inline-block;
-      padding: 3px 8px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 10px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      font-size: 13px;
       color: var(--muted);
-      background: var(--white);
-      margin: 2px 4px 2px 0;
-    }
-
-    code {
-      font-family: Consolas, Menlo, monospace;
-      background: #eef3f6;
-      padding: 2px 5px;
-      border-radius: 4px;
+      background: var(--paper);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     pre {
+      margin: 0;
+      padding: 16px;
       overflow: auto;
-      padding: 14px;
-      background: #101820;
-      color: #f5fbff;
-      border-radius: 6px;
+      border-radius: 8px;
+      background: var(--dark);
+      color: #edf6fb;
       font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    }
+
+    .privacy-band {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 24px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .checklist {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .checklist li {
+      display: flex;
+      gap: 10px;
+      color: var(--muted);
+    }
+
+    .checklist li::before {
+      content: "";
+      flex: 0 0 10px;
+      width: 10px;
+      height: 10px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--teal);
     }
 
     footer {
-      padding: 28px 0;
       border-top: 1px solid var(--line);
       color: var(--muted);
+      padding: 28px 0;
       font-size: 14px;
     }
 
-    @media (max-width: 820px) {
-      .wrap {
-        width: min(100% - 28px, 1120px);
+    footer .wrap {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    @media (max-width: 920px) {
+      .nav {
+        width: min(100% - 28px, 1180px);
       }
 
-      .hero,
+      .navlinks {
+        display: none;
+      }
+
+      .hero {
+        min-height: 560px;
+      }
+
+      .hero-content,
+      main,
+      footer .wrap {
+        width: min(100% - 28px, 1180px);
+      }
+
+      .summary-strip,
       .grid.two,
-      .grid.three {
+      .grid.three,
+      .steps,
+      .demo-wrap,
+      .privacy-band {
         grid-template-columns: 1fr;
+      }
+
+      main {
+        margin-top: -32px;
       }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="wrap hero">
-      <div>
-        <p class="eyebrow">Radiotherapy target preprocessing</p>
-        <h1>CTV Sparse-Prompt Refinement</h1>
-        <p class="lead">
-          A data-preprocessing workflow for clinical target volume completion:
-          sparse 2D target prompts are converted into SDF core-envelope priors,
-          constrained by OAR context, and refined by a supervised pseudo-to-true
-          correction network.
-        </p>
-        <div class="actions">
-          <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">Project repository</a>
-          <a class="button" href="#results">View results</a>
-          <a class="button" href="#code">Reproduce workflow</a>
-        </div>
+  <div class="topbar">
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="brand">CTV Sparse-Prompt Refinement</div>
+      <div class="navlinks">
+        <a href="#method">Method</a>
+        <a href="#demo">Demo</a>
+        <a href="#setup">Setup</a>
+        <a href="#privacy">Privacy</a>
+        <a href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">GitHub</a>
       </div>
-      <div class="figure-frame">
-        <img src="assets/workflow_with_network.png" alt="Workflow diagram showing CT, OAR ROI, sparse prompts, SDF core-envelope prior, and refine network.">
+    </nav>
+  </div>
+
+  <header class="hero">
+    <canvas id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-content">
+      <p class="eyebrow">Anonymized public method package</p>
+      <h1>CTV completion from sparse target prompts</h1>
+      <p class="lead">
+        A public implementation of SDF propagation, core-envelope candidate
+        construction, and pseudo-to-true 3D refinement. This page uses only
+        synthetic visualizations; private clinical data and dataset details are
+        not included.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">Open repository</a>
+        <a class="button" href="#setup">Installation</a>
+        <a class="button" href="#privacy">Privacy checks</a>
       </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <section id="overview">
-      <h2>Problem framing</h2>
-      <p>
-        The task is not framed as fully automatic CTV segmentation from CT alone.
-        Instead, the target is sparse-prompt CTV completion: a small number of
-        2D CTV prompt slices define the clinical target instance, while
-        anatomical context and SDF propagation produce a constrained 3D
-        candidate region.
-      </p>
-      <p>
-        This framing is intended for data preprocessing and target-mask
-        completion under limited expert annotation. Complete expert CTV masks
-        are used for retrospective training and evaluation, not as test-time
-        input.
-      </p>
-      <div>
-        <span class="tag">Planning CT</span>
-        <span class="tag">Sparse 2D prompts</span>
-        <span class="tag">SDF propagation</span>
-        <span class="tag">Core-envelope prior</span>
-        <span class="tag">OAR-constrained ROI</span>
-        <span class="tag">Pseudo-to-true refinement</span>
+  <main>
+    <section aria-label="Repository summary">
+      <div class="summary-strip">
+        <div class="summary-item">
+          <strong>Sparse prompts</strong>
+          <span>Accepts a small number of target slices supplied through local private data paths.</span>
+        </div>
+        <div class="summary-item">
+          <strong>SDF priors</strong>
+          <span>Propagates signed distance fields to build auditable candidate masks.</span>
+        </div>
+        <div class="summary-item">
+          <strong>Refinement</strong>
+          <span>Trains a lightweight 3D correction network when complete local labels are available.</span>
+        </div>
+        <div class="summary-item">
+          <strong>Private by design</strong>
+          <span>Ships no clinical images, labels, case IDs, checkpoints, or private dataset statistics.</span>
+        </div>
       </div>
     </section>
 
     <section id="method">
-      <h2>Method summary</h2>
+      <div class="section-head">
+        <h2>Method Structure</h2>
+        <p>
+          The repository separates geometric preprocessing from optional
+          supervised refinement. Inputs are passed as local paths, so the same
+          code can be used without exposing private data in the public repo.
+        </p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="index">1</span>
+          <h3>Local inputs</h3>
+          <p>Load CT, target labels, OAR masks, or prepared sparse prompts from private local storage.</p>
+        </div>
+        <div class="step">
+          <span class="index">2</span>
+          <h3>SDF propagation</h3>
+          <p>Convert prompt slices into signed distance fields and propagate them across the volume.</p>
+        </div>
+        <div class="step">
+          <span class="index">3</span>
+          <h3>Core-envelope</h3>
+          <p>Aggregate support candidates into a conservative core and a broader candidate envelope.</p>
+        </div>
+        <div class="step">
+          <span class="index">4</span>
+          <h3>Preprocess rule</h3>
+          <p>Select a deployable pseudo-label through train-calibrated support-intersection logic.</p>
+        </div>
+        <div class="step">
+          <span class="index">5</span>
+          <h3>Refine network</h3>
+          <p>Optionally learn local pseudo-to-true corrections under envelope and anatomy constraints.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="demo-wrap">
+        <div class="demo-media">
+          <img src="assets/anonymous_sparse_prompt_demo.gif" alt="Synthetic animated sparse-prompt refinement demo">
+        </div>
+        <div>
+          <div class="section-head">
+            <h2>Dynamic Synthetic Demo</h2>
+            <p>
+              The animation illustrates the workflow on generated geometry:
+              prompt slices, SDF spread, core-envelope support, and final
+              constrained refinement. It contains no real image pixels or
+              clinical-derived contours.
+            </p>
+          </div>
+          <div class="tag-row">
+            <span class="tag">Synthetic volume</span>
+            <span class="tag">No case ID</span>
+            <span class="tag">No scan metadata</span>
+            <span class="tag">No private metrics</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="setup">
+      <div class="section-head">
+        <h2>Environment And Usage</h2>
+        <p>
+          Install the Python dependencies, then provide local paths explicitly.
+          The public repository does not download or include datasets.
+        </p>
+      </div>
       <div class="grid two">
+        <div class="panel">
+          <h3>Install</h3>
+          <pre><code>conda create -n ctv-sparse-refine python=3.10 -y
+conda activate ctv-sparse-refine
+pip install -r requirements.txt</code></pre>
+        </div>
+        <div class="panel">
+          <h3>Run Preprocessing</h3>
+          <pre><code>python scripts/run_sparse_prompt_core_envelope_workflow.py \
+  --ct_dir /path/to/local_dataset/imagesTs \
+  --gt_dir /path/to/local_dataset/labelsTs \
+  --oar_dir /path/to/local_oar_dataset/labelsTs \
+  --out_root results/demo_sparse_prompt_workflow</code></pre>
+        </div>
+        <div class="panel">
+          <h3>Train Refinement</h3>
+          <pre><code>python scripts/train_ctv_pseudo_refine_net.py \
+  --source /path/to/local_dataset \
+  --oar_source /path/to/local_oar_dataset \
+  --feature_source generate \
+  --out_dir results/demo_refine_train</code></pre>
+        </div>
+        <div class="panel">
+          <h3>Preview Site</h3>
+          <pre><code>python -m http.server 8000 --directory site</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy">
+      <div class="privacy-band">
         <div>
-          <h3>Preprocessing stage</h3>
+          <h2>Privacy Boundary</h2>
           <p>
-            Sparse prompt slices are propagated along the axial direction as
-            signed distance fields. Multiple support candidates are aggregated
-            into a high-precision core and a high-recall envelope. The final
-            pseudo-label is selected by the support-intersection rule.
+            Public release is limited to code, generic documentation, and
+            synthetic visual assets. Private data stays outside Git.
           </p>
-          <h3>Refinement stage</h3>
-          <p>
-            The refine network receives CT, sparse prompt information, pseudo
-            SDF cues, core-envelope masks, and OAR-derived context. It predicts
-            inclusion in the constrained uncertain region rather than performing
-            unconstrained full-volume segmentation.
-          </p>
+          <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/blob/main/docs/privacy_release_checklist.md">Open checklist</a>
         </div>
-        <div class="figure-frame">
-          <img src="assets/refine_network_architecture.png" alt="Refine network architecture.">
-        </div>
+        <ul class="checklist">
+          <li>No raw CT, DICOM, NIfTI, RTSTRUCT, or label volumes.</li>
+          <li>No local case IDs, acquisition dates, private study counts, or institution names.</li>
+          <li>No checkpoints, generated predictions, logs, or experiment caches.</li>
+          <li>No manuscript text or tables that disclose private dataset details.</li>
+          <li>No hard-coded private server paths in public command examples.</li>
+        </ul>
       </div>
-    </section>
-
-    <section id="results">
-      <h2>Main held-out CTV results</h2>
-      <div class="grid three">
-        <div class="metric">
-          <span class="value">0.928</span>
-          <span class="label">Support-intersection pseudo-label DSC</span>
-        </div>
-        <div class="metric">
-          <span class="value">0.934</span>
-          <span class="label">Refined output DSC</span>
-        </div>
-        <div class="metric">
-          <span class="value">25 / 31</span>
-          <span class="label">Test scans improved after refinement</span>
-        </div>
-      </div>
-
-      <table aria-label="CTV results table">
-        <thead>
-          <tr>
-            <th>Setting</th>
-            <th>Method</th>
-            <th>Test-time target information</th>
-            <th>DSC</th>
-            <th>uDSC</th>
-            <th>HD95</th>
-            <th>ASD</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>No prompt</td>
-            <td>nnU-Net 3D full-resolution</td>
-            <td>None</td>
-            <td>0.400 +/- 0.345</td>
-            <td>-</td>
-            <td>56.94 +/- 60.13</td>
-            <td>33.72 +/- 45.44</td>
-          </tr>
-          <tr>
-            <td>No prompt</td>
-            <td>DiffUNet</td>
-            <td>None</td>
-            <td>0.316 +/- 0.301</td>
-            <td>-</td>
-            <td>71.89 +/- 60.11</td>
-            <td>41.44 +/- 44.67</td>
-          </tr>
-          <tr>
-            <td>Sparse prompt</td>
-            <td>SAM-Med3D, sparse target prompt</td>
-            <td>K=7 target slices</td>
-            <td>0.422 +/- 0.159</td>
-            <td>-</td>
-            <td>21.32 +/- 9.23</td>
-            <td>5.54 +/- 3.06</td>
-          </tr>
-          <tr>
-            <td>Sparse prompt</td>
-            <td>Linear mask interpolation</td>
-            <td>K=7 target slices</td>
-            <td>0.912 +/- 0.048</td>
-            <td>0.876 +/- 0.057</td>
-            <td>3.90 +/- 1.66</td>
-            <td>1.22 +/- 0.66</td>
-          </tr>
-          <tr>
-            <td>Sparse prompt</td>
-            <td>Support-intersection pseudo-label</td>
-            <td>K=7 target slices</td>
-            <td>0.928 +/- 0.050</td>
-            <td>0.897 +/- 0.062</td>
-            <td>3.43 +/- 1.68</td>
-            <td>0.97 +/- 0.54</td>
-          </tr>
-          <tr>
-            <td>Sparse prompt</td>
-            <td><strong>Ours: OAR/SDF-constrained refine network</strong></td>
-            <td>K=7 target slices</td>
-            <td><strong>0.934 +/- 0.045</strong></td>
-            <td><strong>0.906 +/- 0.054</strong></td>
-            <td><strong>3.11 +/- 1.37</strong></td>
-            <td><strong>0.84 +/- 0.48</strong></td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="note">
-        DSC is Dice similarity coefficient. uDSC excludes prompted slices.
-        Reported values are mean +/- standard deviation on 31 held-out CTV-positive scans.
-      </p>
-    </section>
-
-    <section id="visuals">
-      <h2>Visual evidence</h2>
-      <div class="grid two">
-        <div>
-          <h3>Dataset and CTV completion concept</h3>
-          <div class="figure-frame">
-            <img src="assets/sdf_completion_qualitative.png" alt="Dataset and CTV completion concept figure.">
-          </div>
-        </div>
-        <div>
-          <h3>Method comparison</h3>
-          <div class="figure-frame">
-            <img src="assets/method_visual_comparison_example.png" alt="CTV method visual comparison.">
-          </div>
-        </div>
-        <div>
-          <h3>Ablation progression</h3>
-          <div class="figure-frame">
-            <img src="assets/ablation_visual_progression_example.png" alt="Ablation visual progression.">
-          </div>
-        </div>
-        <div>
-          <h3>GTV and CTV difference</h3>
-          <div class="figure-frame">
-            <img src="assets/gtv_ctv_difference_example.png" alt="GTV and CTV difference illustration.">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="oar">
-      <h2>OAR context</h2>
-      <p>
-        OAR segmentation is used as anatomical context for the legal search
-        space and downstream refinement. It is not presented as the main
-        contribution, but it anchors the CTV completion workflow to clinically
-        plausible thoracic anatomy.
-      </p>
-      <div class="figure-frame">
-        <img src="assets/oar_segmentation_dice.png" alt="OAR segmentation Dice comparison.">
-      </div>
-    </section>
-
-    <section id="code">
-      <h2>Code entry points</h2>
-      <p>
-        The public repository excludes private CT volumes, labels, checkpoints,
-        and generated prediction masks. The uploaded code preserves the
-        workflow scripts, lightweight figures, manuscript tables, and audit
-        notes needed to inspect the method.
-      </p>
-      <pre><code>pip install -r requirements.txt
-python scripts/run_sparse_prompt_core_envelope_workflow.py --help
-python scripts/run_k7_preprocess_variant_screen.py --help
-python scripts/train_ctv_pseudo_refine_net.py --help
-python scripts/evaluate_ctv_refine_safety_fusion.py --help</code></pre>
     </section>
   </main>
 
   <footer>
     <div class="wrap">
-      CTV Sparse-Prompt Refinement. Public materials are anonymized and exclude
-      private clinical imaging data.
+      CTV Sparse-Prompt Refinement. Static public page with synthetic visuals only.
     </div>
   </footer>
+
+  <script>
+    const canvas = document.getElementById("heroCanvas");
+    const ctx = canvas.getContext("2d");
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    function resize() {
+      dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function roundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawSlice(cx, cy, scale, phase, label) {
+      const w = 180 * scale;
+      const h = 126 * scale;
+      roundedRect(cx - w / 2, cy - h / 2, w, h, 10);
+      ctx.fillStyle = "#f9fbfc";
+      ctx.fill();
+      ctx.strokeStyle = "#c8d4df";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#dfe6ed";
+      ctx.beginPath();
+      ctx.ellipse(-34, 0, 34, 48, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(34, 0, 34, 48, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(31, 111, 178, 0.20)";
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 34 + 6 * Math.sin(phase), 26, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#0a7f6a";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 22 + 3 * Math.sin(phase), 15, 0.15, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#b84a4a";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 45 + 3 * Math.cos(phase), 34, 0.15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      ctx.fillStyle = "#52616f";
+      ctx.font = `${12 * scale}px Inter, Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(label, cx, cy + h / 2 + 18 * scale);
+    }
+
+    function draw(t) {
+      const phase = t / 780;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#f7fafb";
+      ctx.fillRect(0, 0, width, height);
+
+      const grid = 38;
+      ctx.strokeStyle = "rgba(82, 97, 111, 0.12)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      const baseX = Math.max(width * 0.58, 520);
+      const baseY = height * 0.52;
+      const spread = Math.min(260, width * 0.16);
+      const scale = Math.max(0.72, Math.min(1.05, width / 1280));
+
+      ctx.strokeStyle = "rgba(31, 111, 178, 0.26)";
+      ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++) {
+        const x = baseX + i * spread * 0.42;
+        ctx.beginPath();
+        ctx.moveTo(x, baseY - 138 * scale);
+        ctx.lineTo(x + 58 * Math.sin(phase + i), baseY + 142 * scale);
+        ctx.stroke();
+      }
+
+      drawSlice(baseX - spread, baseY - 96 * scale, scale, phase, "prompt");
+      drawSlice(baseX, baseY, scale, phase + 1.4, "SDF prior");
+      drawSlice(baseX + spread, baseY + 92 * scale, scale, phase + 2.8, "refined");
+
+      const pulse = 0.5 + 0.5 * Math.sin(phase * 2);
+      ctx.strokeStyle = `rgba(181, 106, 18, ${0.32 + pulse * 0.22})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(baseX - spread + 96 * scale, baseY - 92 * scale);
+      ctx.bezierCurveTo(baseX - 70 * scale, baseY - 152 * scale, baseX + 72 * scale, baseY + 148 * scale, baseX + spread - 96 * scale, baseY + 88 * scale);
+      ctx.stroke();
+
+      requestAnimationFrame(draw);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    requestAnimationFrame(draw);
+  </script>
 </body>
 </html>

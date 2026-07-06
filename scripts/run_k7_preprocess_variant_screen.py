@@ -53,7 +53,7 @@ def case_names(label_dir: str) -> list[str]:
     return [osp.basename(p).replace(".nii.gz", "") for p in sorted(glob(osp.join(label_dir, "*.nii.gz")))]
 
 
-def patient_id(case_id: str) -> str:
+def subject_id(case_id: str) -> str:
     return case_id.split("_CT", 1)[0]
 
 
@@ -79,7 +79,7 @@ def metric_row(split: str, case_id: str, method: str, pred: np.ndarray, gt: np.n
     pred_voxels = int(pred.sum())
     return {
         "split": split,
-        "patient": patient_id(case_id),
+        "subject": subject_id(case_id),
         "case": case_id,
         "method": method,
         "dice": wf.dice_score(pred, gt),
@@ -173,7 +173,7 @@ def build_case(label_dir: str, case_id: str, split: str, k: int, strategy: str, 
     shape = prompt_shape_features(gt, selected_z)
     features = {
         "split": split,
-        "patient": patient_id(case_id),
+        "subject": subject_id(case_id),
         "case": case_id,
         "selected_z": ";".join(str(int(z)) for z in selected_z),
         "n_selected": int(selected_z.size),
@@ -283,8 +283,8 @@ def apply_rule(features: list[dict], lookup: dict[str, dict[str, dict]], rule: d
     return rows
 
 
-def paired(rows: list[dict], split: str, a: str, b: str, patient_level: bool = False) -> dict:
-    key = "patient" if patient_level else "case"
+def paired(rows: list[dict], split: str, a: str, b: str, subject_level: bool = False) -> dict:
+    key = "subject" if subject_level else "case"
     by_key: dict[str, dict[str, list[float]]] = {}
     for row in rows:
         if row["split"] != split:
@@ -322,9 +322,9 @@ def summarize_methods(rows: list[dict], split: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--train_label_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTr"))
-    parser.add_argument("--test_label_dir", default=osp.join(ROOT, "nnunet_runs/raw/Dataset015_CTV_Dataset004Split/labelsTs"))
+    parser = argparse.ArgumentParser(description="K=7 sparse-prompt preprocessing screen on local target-label folders.")
+    parser.add_argument("--train_label_dir", required=True, help="Local training target-label directory.")
+    parser.add_argument("--test_label_dir", required=True, help="Local test target-label directory.")
     parser.add_argument("--out_dir", default=osp.join(ROOT, "results/data_preprocess_variant_screen_k7_20260602"))
     parser.add_argument("--k", type=int, default=7)
     parser.add_argument("--strategy", default="even_nonempty")
@@ -374,11 +374,11 @@ def main() -> None:
             "fixed_vs_linear": paired(final_rows, "test", "train_calibrated_fixed_best", "linear"),
             "fixed_vs_sdf_core": paired(final_rows, "test", "train_calibrated_fixed_best", "sdf_core"),
         },
-        "paired_test_patient": {
-            "threshold_vs_linear": paired(final_rows, "test", "train_calibrated_threshold_rule", "linear", patient_level=True),
-            "threshold_vs_sdf_core": paired(final_rows, "test", "train_calibrated_threshold_rule", "sdf_core", patient_level=True),
-            "fixed_vs_linear": paired(final_rows, "test", "train_calibrated_fixed_best", "linear", patient_level=True),
-            "fixed_vs_sdf_core": paired(final_rows, "test", "train_calibrated_fixed_best", "sdf_core", patient_level=True),
+        "paired_test_subject": {
+            "threshold_vs_linear": paired(final_rows, "test", "train_calibrated_threshold_rule", "linear", subject_level=True),
+            "threshold_vs_sdf_core": paired(final_rows, "test", "train_calibrated_threshold_rule", "sdf_core", subject_level=True),
+            "fixed_vs_linear": paired(final_rows, "test", "train_calibrated_fixed_best", "linear", subject_level=True),
+            "fixed_vs_sdf_core": paired(final_rows, "test", "train_calibrated_fixed_best", "sdf_core", subject_level=True),
         },
     }
     with open(osp.join(args.out_dir, "summary.json"), "w") as f:

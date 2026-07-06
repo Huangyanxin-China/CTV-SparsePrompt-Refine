@@ -1,3 +1,6 @@
+import os
+
+
 def list_models():
     return ["unet3d", "sdf_refine_unet", "sam_med3d"]
 
@@ -23,9 +26,11 @@ def create_model(model_name, **kwargs):
     if name in ("sam", "sam_med3d"):
         from .sam_med3d_adapter import SAMMed3DAdapter
 
+        sam_root = kwargs.get("sam_root") or os.environ.get("SAM_MED3D_ROOT")
+        checkpoint = kwargs.get("checkpoint") or os.environ.get("SAM_MED3D_CKPT")
         return SAMMed3DAdapter(
-            sam_root=kwargs.get("sam_root", "/share3/home/huangyanxin/SAM-Med3D-main"),
-            checkpoint=kwargs.get("checkpoint", "/share3/home/huangyanxin/SAM-Med3D-main/ckpt/sam_med3d_turbo.pth"),
+            sam_root=sam_root,
+            checkpoint=checkpoint,
             model_type=kwargs.get("model_type", "vit_b_ori"),
             freeze_image_encoder=kwargs.get("freeze_image_encoder", True),
             freeze_prompt_encoder=kwargs.get("freeze_prompt_encoder", False),

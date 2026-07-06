@@ -82,9 +82,10 @@ def read_external_test_rows(metrics_root):
 
 
 def dataset_to_task(path):
-    if "Dataset014" in path:
+    lowered = str(path).lower()
+    if "oar" in lowered:
         return "oar"
-    if "Dataset015" in path:
+    if "ctv" in lowered:
         return "ctv"
     return None
 

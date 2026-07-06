@@ -3,7 +3,8 @@
 
 This is not a "pseudo label as ground truth" experiment. The pseudo label,
 SDF core/envelope, sparse prompt, support map, and OAR context are input
-features. The target remains the complete expert CTV mask from Dataset015.
+features. The target remains the complete local expert CTV mask supplied by
+the user.
 
 At inference, the network predicts inclusion probability inside the SDF
 envelope. The final mask is constrained as:
@@ -47,15 +48,7 @@ import run_k7_preprocess_variant_screen as screen
 from run_traditional_linear_mask_interpolation_baseline import linear_mask_interpolation
 
 
-DEFAULT_SOURCE = ROOT / "nnunet_runs/raw/Dataset015_CTV_Dataset004Split"
-DEFAULT_OAR_SOURCE = ROOT / "nnunet_runs/raw/Dataset014_ThoracicOAR_Dataset004Split"
-DEFAULT_RULE = ROOT / "reports/best_ctv_method_vs_best_baseline_20260603/summary.json"
 DEFAULT_OUT = ROOT / "results/ctv_pseudo_refine_net_k7_supervised"
-DEFAULT_PSEUDO_TRAIN = ROOT / "nnunet_runs/raw/Dataset018_CTVOursSupportIntersectionK7/labelsTr"
-DEFAULT_PSEUDO_TEST = (
-    ROOT
-    / "reports/best_ctv_method_vs_best_baseline_20260603/nii/ours_train_calibrated_support_intersection_rule"
-)
 
 
 @dataclass(frozen=True)
@@ -836,12 +829,12 @@ def parse_zyx(values: list[int], name: str) -> tuple[int, int, int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Supervised pseudo-to-true CTV refinement network.")
-    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--oar_source", type=Path, default=DEFAULT_OAR_SOURCE)
-    parser.add_argument("--pseudo_train_dir", type=Path, default=DEFAULT_PSEUDO_TRAIN)
-    parser.add_argument("--pseudo_test_dir", type=Path, default=DEFAULT_PSEUDO_TEST)
+    parser.add_argument("--source", type=Path, required=True, help="Local dataset root containing imagesTr/labelsTr/imagesTs/labelsTs.")
+    parser.add_argument("--oar_source", type=Path, required=True, help="Local OAR dataset root containing labelsTr/labelsTs.")
+    parser.add_argument("--pseudo_train_dir", type=Path, default=None, help="Required when --feature_source precomputed.")
+    parser.add_argument("--pseudo_test_dir", type=Path, default=None, help="Required when --feature_source precomputed.")
     parser.add_argument("--out_dir", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--rule_json", type=Path, default=DEFAULT_RULE)
+    parser.add_argument("--rule_json", type=Path, default=None, help="Optional preprocessing-rule JSON; embedded K=7 rule is used when omitted.")
     parser.add_argument("--feature_source", default="precomputed", choices=("precomputed", "generate"))
     parser.add_argument("--k", type=int, default=7)
     parser.add_argument("--strategy", default="even_nonempty")
@@ -874,15 +867,20 @@ def main() -> None:
 
     args.source = args.source.resolve()
     args.oar_source = args.oar_source.resolve()
-    args.pseudo_train_dir = args.pseudo_train_dir.resolve()
-    args.pseudo_test_dir = args.pseudo_test_dir.resolve()
+    if args.feature_source == "precomputed" and (args.pseudo_train_dir is None or args.pseudo_test_dir is None):
+        parser.error("--pseudo_train_dir and --pseudo_test_dir are required when --feature_source precomputed")
+    if args.pseudo_train_dir is not None:
+        args.pseudo_train_dir = args.pseudo_train_dir.resolve()
+    if args.pseudo_test_dir is not None:
+        args.pseudo_test_dir = args.pseudo_test_dir.resolve()
     args.out_dir = args.out_dir.resolve()
-    args.rule_json = args.rule_json.resolve()
+    if args.rule_json is not None:
+        args.rule_json = args.rule_json.resolve()
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "config.json").write_text(json.dumps({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, indent=2) + "\n")
 
-    rule = load_rule(args.rule_json)
+    rule = load_rule(args.rule_json) if args.rule_json is not None else load_rule(Path("__embedded_k7_rule__.json"))
     skipped_rows = []
     all_train = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Tr"), "train_pool", skipped_rows)
     test_cases = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Ts"), "test", skipped_rows)

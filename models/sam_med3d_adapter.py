@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-DEFAULT_SAM_ROOT = "/share3/home/huangyanxin/SAM-Med3D-main"
-DEFAULT_SAM_CKPT = os.path.join(DEFAULT_SAM_ROOT, "ckpt", "sam_med3d_turbo.pth")
+DEFAULT_SAM_ROOT = os.environ.get("SAM_MED3D_ROOT")
+DEFAULT_SAM_CKPT = os.environ.get("SAM_MED3D_CKPT")
 
 
 class SAMMed3DAdapter(nn.Module):
@@ -37,6 +37,8 @@ class SAMMed3DAdapter(nn.Module):
         self.intensity_min = float(intensity_min)
         self.intensity_max = float(intensity_max)
 
+        if not sam_root:
+            raise ValueError("Set sam_root or SAM_MED3D_ROOT before creating SAMMed3DAdapter.")
         if not os.path.isdir(sam_root):
             raise FileNotFoundError(f"SAM-Med3D root not found: {sam_root}")
         if checkpoint and not os.path.exists(checkpoint):
