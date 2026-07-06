@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CTV Sparse-Prompt Refinement</title>
-  <meta name="description" content="An anonymized public project page for sparse-prompt CTV refinement code, environment setup, synthetic demos, and de-identified mask-only result visualizations.">
+  <meta name="description" content="An anonymized public project page for sparse-prompt CTV refinement code, environment setup, and de-identified real CT contour result visualizations.">
   <style>
     :root {
       color-scheme: light;
@@ -474,9 +474,9 @@
       <h1>CTV completion from sparse target prompts</h1>
       <p class="lead">
         A public implementation of SDF propagation, core-envelope candidate
-        construction, and pseudo-to-true 3D refinement. This page includes a
-        synthetic workflow demo and de-identified mask-only result displays;
-        private clinical data and dataset details are not included.
+        construction, and pseudo-to-true 3D refinement. This page shows
+        de-identified real CT crops with expert drawing and method contours;
+        original volumes, case identifiers, and dataset details are not included.
       </p>
       <div class="actions">
         <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine">Open repository</a>
@@ -504,7 +504,7 @@
         </div>
         <div class="summary-item">
           <strong>Private by design</strong>
-          <span>Ships no raw medical images, label volumes, case IDs, checkpoints, or private dataset statistics.</span>
+          <span>Ships no DICOM/NIfTI volumes, case IDs, checkpoints, or private dataset statistics.</span>
         </div>
       </div>
     </section>
@@ -550,23 +550,23 @@
     <section id="demo">
       <div class="demo-wrap">
         <div class="demo-media">
-          <img src="assets/anonymous_sparse_prompt_demo.gif" alt="Synthetic animated sparse-prompt refinement demo">
+          <img src="assets/real_ct_workflow_demo.gif" alt="Dynamic sparse-prompt workflow on de-identified real CT and expert drawing">
         </div>
         <div>
           <div class="section-head">
-            <h2>Dynamic Synthetic Demo</h2>
+            <h2>Dynamic Real CT Workflow Display</h2>
             <p>
-              The animation illustrates the workflow on generated geometry:
-              prompt slices, SDF spread, core-envelope support, and final
-              constrained refinement. It contains no real image pixels or
-              clinical-derived contours.
+              The animation shows the workflow on rendered 2D CT crops:
+              CT context, expert drawing, candidate method contours, and final
+              sparse-prompt refinement. It contains no case ID, scan date,
+              private path, or volumetric medical file.
             </p>
           </div>
           <div class="tag-row">
-            <span class="tag">Synthetic volume</span>
-            <span class="tag">No case ID</span>
-            <span class="tag">No scan metadata</span>
-            <span class="tag">No private metrics</span>
+            <span class="tag">Real CT crop</span>
+            <span class="tag">Expert drawing</span>
+            <span class="tag">Method contours</span>
+            <span class="tag">No identifiers</span>
           </div>
         </div>
       </div>
@@ -574,42 +574,57 @@
 
     <section id="results">
       <div class="section-head">
-        <h2>Real-Result Visual Display</h2>
+        <h2>Real CT And Contour Displays</h2>
         <p>
-          The result displays are derived from one real segmentation output but
-          are rendered as anonymized masks only. No raw CT voxels, case
-          identifiers, acquisition dates, private paths, or clinical metadata
-          are present in these public assets.
+          These public displays are derived from one real segmentation output
+          and rendered as de-identified 2D CT crops with contour overlays. No
+          DICOM/NIfTI volume, case identifier, acquisition date, private path, or
+          clinical metadata is present in the repository.
         </p>
       </div>
-      <div class="grid two">
+      <div class="grid three">
         <div class="panel result-panel">
           <a href="real-results/single-case-complete-slices.html">
-            <img src="assets/real_single_case_slice_mosaic.png" alt="Anonymized mask-only complete slice mosaic">
+            <img src="assets/real_ct_single_case_slices.gif" alt="Dynamic de-identified real CT single-case slice display">
           </a>
           <div class="result-body">
-            <h3>Single-Case Complete Slice Gallery</h3>
+            <h3>Dynamic Single-Case Slice Display</h3>
             <p>
-              A complete target-range axial gallery shows all sequential slices
-              from the anonymized result, with reference and sparse-prompt
-              refinement masks overlaid.
+              The animated target-range series shows real CT crops with expert
+              drawing and sparse-prompt refinement contours overlaid.
             </p>
             <a class="button primary" href="real-results/single-case-complete-slices.html">Open gallery</a>
           </div>
         </div>
         <div class="panel result-panel">
-          <img src="assets/real_multi_method_comparison.png" alt="Static mask-only multi-method segmentation comparison">
+          <img src="assets/real_ct_multi_method_comparison.png" alt="Static real CT multi-method segmentation comparison">
           <div class="result-body">
             <h3>Static Multi-Method Comparison</h3>
             <p>
-              A compact comparison contrasts generic preprocessing and
-              refinement variants against the expert reference contour without
-              exposing source volumes.
+              The static panel compares expert drawing, preprocessing variants,
+              graph refinement, and final sparse-prompt refinement on the same
+              CT slice positions.
             </p>
             <div class="tag-row">
-              <span class="tag">Mask-only</span>
+              <span class="tag">Real CT crops</span>
               <span class="tag">Generic method labels</span>
-              <span class="tag">No raw image pixels</span>
+              <span class="tag">No source volumes</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel result-panel">
+          <img src="assets/real_ct_workflow_demo.gif" alt="Dynamic workflow display using real CT crops and contour overlays">
+          <div class="result-body">
+            <h3>Dynamic Workflow Display</h3>
+            <p>
+              The workflow animation follows CT context, expert drawing,
+              candidate contours, and final refinement across the anonymized
+              target range.
+            </p>
+            <div class="tag-row">
+              <span class="tag">CT context</span>
+              <span class="tag">Expert contour</span>
+              <span class="tag">Refinement output</span>
             </div>
           </div>
         </div>
@@ -659,15 +674,15 @@ pip install -r requirements.txt</code></pre>
         <div>
           <h2>Privacy Boundary</h2>
           <p>
-            Public release is limited to code, generic documentation, synthetic
-            visual assets, and de-identified mask-only result renderings.
-            Private data stays outside Git.
+            Public release is limited to code, generic documentation, and
+            de-identified rendered 2D CT/contour assets. Original private data
+            stays outside Git.
           </p>
           <a class="button primary" href="https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/blob/main/docs/privacy_release_checklist.md">Open checklist</a>
         </div>
         <ul class="checklist">
-          <li>No raw CT, DICOM, NIfTI, RTSTRUCT, or label volumes.</li>
-          <li>No raw medical image pixels inside real-result display assets.</li>
+          <li>No DICOM, NIfTI, RTSTRUCT, label volumes, or full raw scan exports.</li>
+          <li>Only de-identified rendered 2D CT crops and contour overlays are included.</li>
           <li>No local case IDs, acquisition dates, private study counts, or institution names.</li>
           <li>No checkpoints, generated predictions, logs, or experiment caches.</li>
           <li>No manuscript text or tables that disclose private dataset details.</li>
@@ -679,7 +694,7 @@ pip install -r requirements.txt</code></pre>
 
   <footer>
     <div class="wrap">
-      CTV Sparse-Prompt Refinement. Static public page with synthetic and de-identified mask-only visuals.
+      CTV Sparse-Prompt Refinement. Static public page with de-identified real CT and contour visuals.
     </div>
   </footer>
 

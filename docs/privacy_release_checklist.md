@@ -4,14 +4,14 @@ Use this checklist before pushing to a public GitHub repository.
 
 ## Required Scope
 
-- Keep method code, generic documentation, environment requirements, synthetic
-  visual assets, and de-identified mask-only result renderings.
-- Exclude raw clinical images, reversible medical volumes, labels, DICOM,
-  NIfTI, model checkpoints, generated prediction volumes, local logs, and
-  manuscript files that describe private data.
-- If real-result visualizations are included, they must be rendered PNG/HTML
-  views of masks only, with no raw medical image pixels, case names, acquisition
-  dates, private paths, or clinical metadata.
+- Keep method code, generic documentation, environment requirements, and
+  de-identified 2D CT/contour result renderings.
+- Exclude reversible medical volumes, full raw clinical image exports, label
+  volumes, DICOM, NIfTI, model checkpoints, generated prediction volumes, local
+  logs, and manuscript files that describe private data.
+- If real-result visualizations are included, they must be rendered PNG/GIF/HTML
+  views of de-identified 2D CT crops and contour overlays only, with no case
+  names, acquisition dates, private paths, or clinical metadata.
 - Avoid dataset-specific sample counts, split details, case identifiers,
   acquisition dates, institution names, server paths, or private study labels.
 
@@ -59,15 +59,13 @@ git status --ignored --short
 
 - Open `README.md` and confirm examples use placeholders such as
   `/path/to/local_dataset`.
-- Open `site/index.html` and confirm visualizations are synthetic or
-  de-identified mask-only renderings, with no raw real case images or private
-  result values.
-- Confirm `site/assets/anonymous_sparse_prompt_demo.gif` and
-  `site/assets/anonymous_sparse_prompt_demo.png` are synthetic graphics.
-- Confirm `site/assets/real_single_case_slice_mosaic.png`,
-  `site/assets/real_multi_method_comparison.png`, and
-  `site/real-results/` contain only generic sequential slice labels and
-  mask-only renderings.
+- Open `site/index.html` and confirm visualizations are de-identified 2D CT
+  crops and contour overlays, with no case IDs, dates, private paths, or
+  private result values.
+- Confirm `site/assets/real_ct_single_case_slices.gif`,
+  `site/assets/real_ct_multi_method_comparison.png`,
+  `site/assets/real_ct_workflow_demo.gif`, and `site/real-results/` contain only
+  generic sequential slice labels and de-identified rendered display images.
 - Confirm `.gitignore` covers local data, checkpoints, outputs, logs, archives,
   manuscript exports, and office documents.
 

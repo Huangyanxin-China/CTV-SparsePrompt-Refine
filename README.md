@@ -5,31 +5,39 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-0a7f6a)](requirements.txt)
 
 Public implementation of a sparse-prompt clinical target volume (CTV)
-refinement workflow. The repository provides method code, an anonymized dynamic
-demo, de-identified mask-only result visualizations, environment requirements,
-and command templates. Private clinical images, label volumes, model
-checkpoints, case identifiers, and study-level dataset details are not included.
+refinement workflow. The repository provides method code, de-identified real
+CT-and-contour result visualizations, environment requirements, and command
+templates. Raw clinical volumes, label volumes, model checkpoints, case
+identifiers, and study-level dataset details are not included.
+
+## Real CT And Contour Result Preview
 
 <p align="center">
-  <img src="site/assets/anonymous_sparse_prompt_demo.gif" width="760" alt="Animated synthetic sparse-prompt CTV refinement demo">
+  <strong>Dynamic single-case slice display</strong><br>
+  <img src="site/assets/real_ct_single_case_slices.gif" width="760" alt="Dynamic de-identified real CT slice display with expert drawing and sparse-prompt refinement contours">
 </p>
 
 <p align="center">
-  <img src="site/assets/real_single_case_slice_mosaic.png" width="760" alt="Anonymized mask-only real-result slice mosaic">
+  <strong>Static multi-method comparison</strong><br>
+  <img src="site/assets/real_ct_multi_method_comparison.png" width="760" alt="Static de-identified real CT multi-method segmentation comparison">
 </p>
 
-## Visual Result Preview
+<p align="center">
+  <strong>Dynamic workflow display</strong><br>
+  <img src="site/assets/real_ct_workflow_demo.gif" width="760" alt="Dynamic workflow display on de-identified real CT and expert drawing">
+</p>
 
-The repository homepage shows the two public result views directly:
+The repository homepage shows the three public result views directly. These
+assets are rendered 2D CT crops with contour overlays from one de-identified
+case. Original DICOM/NIfTI volumes, case identifiers, acquisition dates, local
+paths, and scan metadata are not included.
 
 - Single-case complete slice display:
   [`site/real-results/single-case-complete-slices.html`](site/real-results/single-case-complete-slices.html)
 - Static multi-method comparison:
-  [`site/assets/real_multi_method_comparison.png`](site/assets/real_multi_method_comparison.png)
-
-<p align="center">
-  <img src="site/assets/real_multi_method_comparison.png" width="760" alt="Anonymized mask-only static multi-method segmentation comparison">
-</p>
+  [`site/assets/real_ct_multi_method_comparison.png`](site/assets/real_ct_multi_method_comparison.png)
+- Dynamic workflow display:
+  [`site/assets/real_ct_workflow_demo.gif`](site/assets/real_ct_workflow_demo.gif)
 
 When GitHub Pages is enabled, the rendered project page is available at:
 
@@ -44,8 +52,8 @@ https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/
 - Support-intersection preprocessing and K-value screening utilities.
 - A lightweight pseudo-to-true 3D refinement network.
 - Generic evaluation utilities for overlap and surface metrics.
-- A static GitHub Pages homepage with synthetic and de-identified mask-only
-  visualizations.
+- A static GitHub Pages homepage with de-identified real CT crops, expert
+  drawings, and method contour overlays.
 
 ## Data Privacy Boundary
 
@@ -55,19 +63,23 @@ to supply your own local data paths when running the scripts. Do not commit
 local data, generated predictions, checkpoints, logs, or institutional
 metadata.
 
-The dynamic workflow demo uses synthetic masks. The real-result display assets
-are de-identified PNG/HTML renderings derived from segmentation masks only.
-They omit raw medical image pixels, local case names, acquisition dates, private
-paths, and clinical metadata.
+The public display assets are de-identified PNG/GIF/HTML renderings derived
+from 2D CT crops and segmentation contours. They omit original DICOM/NIfTI
+volumes, local case names, acquisition dates, private paths, and clinical
+metadata.
 
 ## Visual Result Pages
 
 - `site/index.html`: public homepage with workflow, setup, privacy boundary, and
   result-display sections.
 - `site/real-results/single-case-complete-slices.html`: complete target-range
-  axial slice gallery for one anonymized result, rendered from masks only.
-- `site/assets/real_multi_method_comparison.png`: static multi-method
-  segmentation comparison using generic method labels and reference contours.
+  axial slice gallery rendered from de-identified real CT crops and contours.
+- `site/assets/real_ct_single_case_slices.gif`: dynamic single-case CT slice
+  display with expert drawing and sparse-prompt refinement contours.
+- `site/assets/real_ct_multi_method_comparison.png`: static multi-method
+  segmentation comparison on real CT crops.
+- `site/assets/real_ct_workflow_demo.gif`: dynamic workflow display on real CT
+  crops, expert drawing, candidate contours, and final refinement.
 
 ## Environment
 
