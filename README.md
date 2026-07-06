@@ -18,6 +18,25 @@ checkpoints, case identifiers, and study-level dataset details are not included.
   <img src="site/assets/real_single_case_slice_mosaic.png" width="760" alt="Anonymized mask-only real-result slice mosaic">
 </p>
 
+## Visual Result Preview
+
+The repository homepage shows the two public result views directly:
+
+- Single-case complete slice display:
+  [`site/real-results/single-case-complete-slices.html`](site/real-results/single-case-complete-slices.html)
+- Static multi-method comparison:
+  [`site/assets/real_multi_method_comparison.png`](site/assets/real_multi_method_comparison.png)
+
+<p align="center">
+  <img src="site/assets/real_multi_method_comparison.png" width="760" alt="Anonymized mask-only static multi-method segmentation comparison">
+</p>
+
+When GitHub Pages is enabled, the rendered project page is available at:
+
+```text
+https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/
+```
+
 ## What This Repository Contains
 
 - SDF propagation from sparse 2D target prompts.
