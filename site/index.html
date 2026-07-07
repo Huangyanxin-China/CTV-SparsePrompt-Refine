@@ -550,22 +550,24 @@
     <section id="demo">
       <div class="demo-wrap">
         <div class="demo-media">
-          <img src="assets/real_ct_workflow_demo.gif" alt="Dynamic sparse-prompt workflow on de-identified real CT and expert drawing">
+          <img src="assets/real_ct_workflow_demo.gif" alt="Dynamic paper-aligned sparse-prompt workflow on de-identified real CT and expert drawing">
         </div>
         <div>
           <div class="section-head">
             <h2>Dynamic Real CT Workflow Display</h2>
             <p>
-              The animation shows the workflow on rendered 2D CT crops:
-              CT context, expert drawing, candidate method contours, and final
-              sparse-prompt refinement. It contains no case ID, scan date,
-              private path, or volumetric medical file.
+              The animation follows the manuscript method order on rendered 2D
+              CT crops: expert drawing, Linear interpolation, SDF/support
+              pseudo-label, SDF/support+3D U-Net refine, and Raw ADP-Refine
+              (K=7). It contains no case ID, scan date, private path, or
+              volumetric medical file.
             </p>
           </div>
           <div class="tag-row">
             <span class="tag">Real CT crop</span>
             <span class="tag">Expert drawing</span>
-            <span class="tag">Method contours</span>
+            <span class="tag">Paper method labels</span>
+            <span class="tag">ADP-Refine</span>
             <span class="tag">No identifiers</span>
           </div>
         </div>
@@ -597,17 +599,17 @@
           </div>
         </div>
         <div class="panel result-panel">
-          <img src="assets/real_ct_multi_method_comparison.png" alt="Static real CT multi-method segmentation comparison">
+          <img src="assets/real_ct_multi_method_comparison.png" alt="Static real CT multi-method segmentation comparison with paper-aligned labels">
           <div class="result-body">
             <h3>Static Multi-Method Comparison</h3>
             <p>
-              The static panel compares expert drawing, preprocessing variants,
-              graph refinement, and final sparse-prompt refinement on the same
-              CT slice positions.
+              The static panel compares expert drawing, Linear interpolation,
+              SDF/support pseudo-label, SDF/support+3D U-Net refine, and Raw
+              ADP-Refine (K=7) on the same CT slice positions.
             </p>
             <div class="tag-row">
               <span class="tag">Real CT crops</span>
-              <span class="tag">Generic method labels</span>
+              <span class="tag">Paper method labels</span>
               <span class="tag">No source volumes</span>
             </div>
           </div>
@@ -617,14 +619,14 @@
           <div class="result-body">
             <h3>Dynamic Workflow Display</h3>
             <p>
-              The workflow animation follows CT context, expert drawing,
-              candidate contours, and final refinement across the anonymized
-              target range.
+              The workflow animation uses the same paper-aligned method order
+              as the static comparison and keeps each contour legend inside its
+              own panel.
             </p>
             <div class="tag-row">
               <span class="tag">CT context</span>
               <span class="tag">Expert contour</span>
-              <span class="tag">Refinement output</span>
+              <span class="tag">ADP-Refine</span>
             </div>
           </div>
         </div>
