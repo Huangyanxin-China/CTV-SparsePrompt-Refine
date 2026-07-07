@@ -19,12 +19,12 @@ identifiers, and study-level dataset details are not included.
 
 <p align="center">
   <strong>Static multi-method comparison</strong><br>
-  <img src="site/assets/real_ct_multi_method_comparison.png" width="760" alt="Static de-identified real CT comparison with paper-aligned method labels">
+  <img src="site/assets/real_ct_multi_method_comparison.png" width="760" alt="Static de-identified real CT comparison from an original-grid ROI crop">
 </p>
 
 <p align="center">
   <strong>Dynamic workflow display</strong><br>
-  <img src="site/assets/real_ct_workflow_demo.gif" width="760" alt="Dynamic paper-aligned workflow display on de-identified real CT and expert drawing">
+  <img src="site/assets/real_ct_workflow_demo.gif" width="760" alt="Dynamic original-grid ROI crop display on de-identified real CT and expert drawing">
 </p>
 
 The repository homepage shows the three public result views directly. These
@@ -32,9 +32,9 @@ assets are rendered 2D CT crops with contour overlays from one de-identified
 case. Original DICOM/NIfTI volumes, case identifiers, acquisition dates, local
 paths, and scan metadata are not included.
 
-The workflow and multi-method comparison use the manuscript method order:
-Expert drawing, Linear interpolation, SDF/support pseudo-label,
-SDF/support+3D U-Net refine, and Raw ADP-Refine (K=7).
+The workflow and multi-method comparison are rendered from original CT-grid
+outputs after applying the same ROI crop. They show Expert drawing, nnU-Net,
+MedSAM2 K=7 mask, Linear Interpolation, and Raw ADP-Refine (K=7).
 
 - Single-case complete slice display:
   [`site/real-results/single-case-complete-slices.html`](site/real-results/single-case-complete-slices.html)
@@ -80,11 +80,11 @@ metadata.
   axial slice gallery rendered from de-identified real CT crops and contours.
 - `site/assets/real_ct_single_case_slices.gif`: dynamic single-case CT slice
   display with expert drawing and sparse-prompt refinement contours.
-- `site/assets/real_ct_multi_method_comparison.png`: static paper-aligned
-  comparison of expert drawing, Linear interpolation, SDF/support pseudo-label,
-  SDF/support+3D U-Net refine, and Raw ADP-Refine (K=7).
+- `site/assets/real_ct_multi_method_comparison.png`: static original-grid ROI
+  comparison of expert drawing, nnU-Net, MedSAM2 K=7 mask, Linear
+  Interpolation, and Raw ADP-Refine (K=7).
 - `site/assets/real_ct_workflow_demo.gif`: dynamic workflow display on real CT
-  crops using the same paper-aligned method labels.
+  crops using the same original-grid ROI crop and method labels.
 
 ## Environment
 
