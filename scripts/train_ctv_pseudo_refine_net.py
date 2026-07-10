@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
@@ -43,6 +44,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from models.sdf_refine_net import SDFRefineNet
+from utils.io import assert_same_geometry
+from utils.rules import extract_threshold_rule, threshold_condition
 import run_sparse_prompt_core_envelope_workflow as wf
 import run_k7_preprocess_variant_screen as screen
 from run_traditional_linear_mask_interpolation_baseline import linear_mask_interpolation
@@ -144,7 +147,9 @@ def make_train_val_split(cases: list[CasePaths], val_fraction: float, seed: int)
 
 def load_rule(path: Path) -> dict:
     if not path.exists():
-        log(f"Rule file not found, using embedded K=7 rule: {path}")
+        if path.name != "__embedded_k7_rule__.json":
+            raise FileNotFoundError(f"Rule file not found: {path}")
+        log("Using embedded K=7 threshold rule.")
         return {
             "type": "threshold",
             "feature": "core_base_vol_ratio",
@@ -154,13 +159,18 @@ def load_rule(path: Path) -> dict:
             "method_if_false": "support_100",
         }
     payload = json.loads(path.read_text())
-    rule = payload.get("rule", payload)
-    required = {"threshold", "method_if_true", "method_if_false"}
-    missing = required - set(rule)
-    if missing:
-        raise ValueError(f"Rule file {path} missing fields: {sorted(missing)}")
-    return rule
+    try:
+        return extract_threshold_rule(payload)
+    except ValueError as exc:
+        raise ValueError(f"Invalid threshold rule in {path}: {exc}") from exc
 
+
+def file_signature(path: Path) -> dict:
+    """Return a cheap cache-invalidation signature for a local input file."""
+    if not path.exists():
+        return {"missing": True}
+    stat = path.stat()
+    return {"size": int(stat.st_size), "mtime_ns": int(stat.st_mtime_ns)}
 
 def fast_margin_envelope(
     seed: np.ndarray,
@@ -279,23 +289,70 @@ def build_pseudo_features(
         sdf_base = pseudo_methods["sdf_base"].astype(bool)
         current_envelope = pseudo_methods["envelope"].astype(bool)
 
-        support_100 = screen.support_mask(pseudo_support, 1.0, prompt).astype(bool)
-        linear_core_intersection = (linear & pseudo_core)
+        support_masks = {
+            f"support_{int(t * 100):03d}": screen.support_mask(pseudo_support, t, prompt).astype(bool)
+            for t in (1.0, 0.8, 0.6, 0.4, 0.2)
+        }
+        linear_core_union = linear | pseudo_core
+        linear_core_union[prompt] = True
+        linear_core_intersection = linear & pseudo_core
         linear_core_intersection[prompt] = True
+        vote2_linear_core_base = (
+            linear.astype(np.uint8) + pseudo_core.astype(np.uint8) + sdf_base.astype(np.uint8)
+        ) >= 2
+        vote2_linear_core_base[prompt] = True
+        vote2_linear_core_envelope = (
+            linear.astype(np.uint8) + pseudo_core.astype(np.uint8) + current_envelope.astype(np.uint8)
+        ) >= 2
+        vote2_linear_core_envelope[prompt] = True
 
-        feature = float(pseudo_core.sum() / max(int(sdf_base.sum()), 1))
-        op = str(rule.get("op", "lt"))
-        threshold = float(rule["threshold"])
-        use_true = feature < threshold if op == "lt" else feature > threshold
+        candidate_methods = {
+            "linear": linear,
+            "sdf_base": sdf_base,
+            "sdf_core": pseudo_core,
+            "core_only": pseudo_core,
+            "envelope": current_envelope,
+            "linear_core_union": linear_core_union,
+            "linear_core_intersection": linear_core_intersection,
+            "vote2_linear_core_base": vote2_linear_core_base,
+            "vote2_linear_core_envelope": vote2_linear_core_envelope,
+            "support_volume_match_linear": screen.volume_match_support(
+                support_masks, int(linear.sum())
+            ),
+            "support_volume_match_mean_linear_core": screen.volume_match_support(
+                support_masks, int((int(linear.sum()) + int(pseudo_core.sum())) / 2)
+            ),
+            **support_masks,
+            **{name: value for name, value in pseudo_methods.items() if value is not None},
+        }
+
+        selected_z_array = np.asarray(selected_z, dtype=int)
+        shape_features = screen.prompt_shape_features(gt, selected_z_array)
+        feature_values = {
+            "core_linear_vol_ratio": float(pseudo_core.sum() / max(int(linear.sum()), 1)),
+            "base_linear_vol_ratio": float(sdf_base.sum() / max(int(linear.sum()), 1)),
+            "core_base_vol_ratio": float(pseudo_core.sum() / max(int(sdf_base.sum()), 1)),
+            "core_linear_agreement": wf.dice_score(pseudo_core, linear),
+            "base_linear_agreement": wf.dice_score(sdf_base, linear),
+            "z_extent": int(selected_z_array[-1] - selected_z_array[0]),
+            "z_gap_mean": float(np.diff(selected_z_array).mean()) if selected_z_array.size > 1 else 0.0,
+            **shape_features,
+        }
+        feature_name = str(rule["feature"])
+        if feature_name not in feature_values:
+            raise ValueError(
+                f"Unsupported pseudo-rule feature {feature_name!r}; "
+                f"available features: {sorted(feature_values)}"
+            )
+        feature = float(feature_values[feature_name])
+        use_true = threshold_condition(feature, str(rule["op"]), float(rule["threshold"]))
         method_name = str(rule["method_if_true"] if use_true else rule["method_if_false"])
-        if method_name == "linear_core_intersection":
-            pseudo = linear_core_intersection
-        elif method_name == "support_100":
-            pseudo = support_100
-        elif method_name in pseudo_methods:
-            pseudo = pseudo_methods[method_name].astype(bool)
-        else:
-            raise ValueError(f"Unsupported pseudo method from rule: {method_name}")
+        if method_name not in candidate_methods:
+            raise ValueError(
+                f"Unsupported pseudo method from rule: {method_name!r}; "
+                f"available methods: {sorted(candidate_methods)}"
+            )
+        pseudo = candidate_methods[method_name].astype(bool, copy=True)
         pseudo[prompt] = True
 
     spinal = (oar == 3)
@@ -455,7 +512,15 @@ def prepare_case_cache(
 ) -> dict:
     out_path = cache_dir / case.split / f"{case.case_id}.npz"
     meta_path = cache_dir / case.split / f"{case.case_id}.json"
-    if out_path.exists() and meta_path.exists() and not force:
+    rule_signature = hashlib.sha256(
+        json.dumps(rule, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    input_paths = [case.ct_path, case.label_path, case.oar_path]
+    if precomputed_pseudo_path is not None:
+        input_paths.append(precomputed_pseudo_path)
+    input_signatures = {str(path): file_signature(path) for path in input_paths}
+    inputs_available = all(not signature.get("missing") for signature in input_signatures.values())
+    if out_path.exists() and meta_path.exists() and not force and inputs_available:
         cached = json.loads(meta_path.read_text())
         if (
             int(cached.get("k", -1)) == int(k)
@@ -466,7 +531,10 @@ def prepare_case_cache(
             and str(cached.get("refine_mode", "")) == str(refine_mode)
             and abs(float(cached.get("refine_margin_mm", -1.0)) - float(refine_margin_mm)) < 1e-8
             and abs(float(cached.get("anatomy_margin_mm", -1.0)) - float(anatomy_margin_mm)) < 1e-8
-            and abs(float(cached.get("rule_threshold", -1.0)) - float(rule["threshold"])) < 1e-8
+            and cached.get("rule_signature") == rule_signature
+            and cached.get("roi_pad_zyx") == [int(v) for v in roi_pad_zyx]
+            and cached.get("min_roi_zyx") == [int(v) for v in min_roi_zyx]
+            and cached.get("input_signatures") == input_signatures
         ):
             return cached
         log(f"cache stale for {case.case_id}; rebuilding")
@@ -476,10 +544,11 @@ def prepare_case_cache(
     oar, oar_img = read_array(case.oar_path)
     if ct.shape != gt_arr.shape or gt_arr.shape != oar.shape:
         raise RuntimeError(f"{case.case_id}: shape mismatch CT={ct.shape}, CTV={gt_arr.shape}, OAR={oar.shape}")
-    if ct_img.GetSpacing() != gt_img.GetSpacing() or gt_img.GetSpacing() != oar_img.GetSpacing():
-        raise RuntimeError(
-            f"{case.case_id}: spacing mismatch CT={ct_img.GetSpacing()}, CTV={gt_img.GetSpacing()}, OAR={oar_img.GetSpacing()}"
-        )
+    try:
+        assert_same_geometry(gt_img, ct_img, "CTV", "CT")
+        assert_same_geometry(gt_img, oar_img, "CTV", "OAR")
+    except ValueError as exc:
+        raise RuntimeError(f"{case.case_id}: {exc}") from exc
 
     gt = gt_arr > 0
     precomputed_pseudo = None
@@ -493,10 +562,10 @@ def prepare_case_cache(
             raise RuntimeError(
                 f"{case.case_id}: precomputed pseudo shape mismatch {precomputed_arr.shape} vs {gt.shape}"
             )
-        if precomputed_img.GetSpacing() != gt_img.GetSpacing():
-            raise RuntimeError(
-                f"{case.case_id}: precomputed pseudo spacing mismatch {precomputed_img.GetSpacing()} vs {gt_img.GetSpacing()}"
-            )
+        try:
+            assert_same_geometry(gt_img, precomputed_img, "CTV", "precomputed pseudo")
+        except ValueError as exc:
+            raise RuntimeError(f"{case.case_id}: {exc}") from exc
         precomputed_pseudo = precomputed_arr > 0
     elif feature_source != "generate":
         raise ValueError(f"Unknown feature_source: {feature_source}")
@@ -564,6 +633,11 @@ def prepare_case_cache(
         "feature_source": str(feature_source),
         "precomputed_pseudo_path": str(precomputed_pseudo_path) if precomputed_pseudo_path is not None else "",
         "rule_threshold": float(rule["threshold"]),
+        "rule_signature": rule_signature,
+        "rule": dict(rule),
+        "input_signatures": input_signatures,
+        "roi_pad_zyx": [int(v) for v in roi_pad_zyx],
+        "min_roi_zyx": [int(v) for v in min_roi_zyx],
         "crop_start_zyx": [int(s.start) for s in slices],
         "crop_stop_zyx": [int(s.stop) for s in slices],
         "crop_shape_zyx": [int(s.stop - s.start) for s in slices],
