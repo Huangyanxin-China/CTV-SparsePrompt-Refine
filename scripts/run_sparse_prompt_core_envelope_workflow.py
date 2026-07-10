@@ -6,6 +6,7 @@ import json
 import math
 import os
 import os.path as osp
+import sys
 from pathlib import Path
 from collections import defaultdict
 from glob import glob
@@ -17,6 +18,10 @@ from scipy import ndimage
 
 
 ROOT = str(Path(__file__).resolve().parents[1])
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from utils.io import assert_same_geometry
 
 
 PROFILES = {
@@ -271,7 +276,7 @@ def profile_candidates(profile_name):
     return candidates
 
 
-def build_methods(prompt, selected_z, spacing_xyz, oar, profile_name):
+def build_methods(prompt, selected_z, spacing_xyz, oar, profile_name, spinal_label=3):
     profile = PROFILES[profile_name]
     candidates = profile_candidates(profile_name)
     support_count = np.zeros(prompt.shape, dtype=np.uint16)
@@ -302,7 +307,7 @@ def build_methods(prompt, selected_z, spacing_xyz, oar, profile_name):
     core[prompt] = True
     envelope[prompt] = True
 
-    spinal = oar == 3
+    spinal = oar == int(spinal_label)
     envelope_oar = envelope.copy()
     envelope_oar[spinal] = False
     envelope_oar[prompt] = True
@@ -378,11 +383,18 @@ def run_configs(args, configs, out_dir, skip_surface_metrics=True, write_predict
         if not (osp.exists(ct_path) and osp.exists(gt_path) and osp.exists(oar_path)):
             skipped.append({"case": case_id, "reason": "missing input"})
             continue
+        ct_arr, ct_img = read_image(ct_path)
         gt_arr, gt_img = read_image(gt_path)
-        oar, _ = read_image(oar_path)
-        if gt_arr.shape != oar.shape:
-            skipped.append({"case": case_id, "reason": f"shape mismatch gt={gt_arr.shape} oar={oar.shape}"})
-            continue
+        oar, oar_img = read_image(oar_path)
+        if ct_arr.shape != gt_arr.shape or gt_arr.shape != oar.shape:
+            raise RuntimeError(
+                f"{case_id}: shape mismatch CT={ct_arr.shape}, GT={gt_arr.shape}, OAR={oar.shape}"
+            )
+        try:
+            assert_same_geometry(gt_img, ct_img, "GT", "CT")
+            assert_same_geometry(gt_img, oar_img, "GT", "OAR")
+        except ValueError as exc:
+            raise RuntimeError(f"{case_id}: {exc}") from exc
         gt = gt_arr == int(args.target_label)
         if not gt.any():
             skipped.append({"case": case_id, "reason": "empty target"})
@@ -400,7 +412,14 @@ def run_configs(args, configs, out_dir, skip_surface_metrics=True, write_predict
                 prompt_cache[prompt_key] = (prompt, selected_z, prompt_z_mask)
             prompt, selected_z, prompt_z_mask = prompt_cache[prompt_key]
 
-            methods, support, n_candidates = build_methods(prompt, selected_z, spacing_xyz, oar, config["profile"])
+            methods, support, n_candidates = build_methods(
+                prompt,
+                selected_z,
+                spacing_xyz,
+                oar,
+                config["profile"],
+                spinal_label=args.spinal_label,
+            )
             core = methods["core_only"]
             envelope = methods["envelope"]
             oracle = core | (gt & (envelope & (~core)))
@@ -607,6 +626,12 @@ def main():
     parser.add_argument("--oar_dir", required=True, help="Local OAR mask directory aligned with --ct_dir and --gt_dir.")
     parser.add_argument("--out_root", default=osp.join(ROOT, "results/next_sparse_prompt_core_envelope_workflow"))
     parser.add_argument("--target_label", type=int, default=1)
+    parser.add_argument(
+        "--spinal_label",
+        type=int,
+        default=3,
+        help="OAR label value used for spinal-cord exclusion.",
+    )
     parser.add_argument("--k_values", nargs="+", type=int, default=[3, 5, 7, 9])
     parser.add_argument(
         "--strategies",

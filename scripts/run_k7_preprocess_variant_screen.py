@@ -23,11 +23,14 @@ from scipy.stats import wilcoxon
 
 ROOT = str(Path(__file__).resolve().parents[1])
 SCRIPT_DIR = osp.join(ROOT, "scripts")
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 import run_sparse_prompt_core_envelope_workflow as wf
 from run_traditional_linear_mask_interpolation_baseline import linear_mask_interpolation
+from utils.rules import threshold_condition
 
 
 FEATURES = [
@@ -247,7 +250,7 @@ def calibrate_best_threshold_rule(train_features: list[dict], train_metrics: lis
                         vals = []
                         choose_a = 0
                         for feat in train_features:
-                            cond = float(feat[feature]) < threshold if op == "lt" else float(feat[feature]) >= threshold
+                            cond = threshold_condition(float(feat[feature]), op, threshold)
                             method = method_a if cond else method_b
                             choose_a += int(cond)
                             vals.append(float(lookup[feat["case"]][method]["dice"]))
@@ -274,7 +277,7 @@ def apply_rule(features: list[dict], lookup: dict[str, dict[str, dict]], rule: d
         if rule["type"] == "fixed":
             method = rule["method"]
         else:
-            cond = float(feat[rule["feature"]]) < float(rule["threshold"]) if rule["op"] == "lt" else float(feat[rule["feature"]]) >= float(rule["threshold"])
+            cond = threshold_condition(float(feat[rule["feature"]]), str(rule["op"]), float(rule["threshold"]))
             method = rule["method_if_true"] if cond else rule["method_if_false"]
         row = dict(lookup[feat["case"]][method])
         row["method"] = name
@@ -383,6 +386,8 @@ def main() -> None:
     }
     with open(osp.join(args.out_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
+    with open(osp.join(args.out_dir, "selected_threshold_rule.json"), "w") as f:
+        json.dump(threshold_rule, f, indent=2)
     print(json.dumps(summary, indent=2))
 
 

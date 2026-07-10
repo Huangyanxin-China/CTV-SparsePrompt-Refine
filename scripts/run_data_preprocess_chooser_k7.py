@@ -24,11 +24,14 @@ from scipy.stats import wilcoxon
 
 ROOT = str(Path(__file__).resolve().parents[1])
 SCRIPT_DIR = osp.join(ROOT, "scripts")
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 import run_sparse_prompt_core_envelope_workflow as wf
 from run_traditional_linear_mask_interpolation_baseline import linear_mask_interpolation
+from utils.rules import threshold_condition
 
 
 def read_image(path: str):
@@ -153,7 +156,7 @@ def calibrate_threshold(train_features: list[dict], train_metric_by_case: dict[s
             correct = []
             choose_core_count = 0
             for row in train_features:
-                choose_core = float(row[feature_name]) < threshold if op == "lt" else float(row[feature_name]) >= threshold
+                choose_core = threshold_condition(float(row[feature_name]), op, threshold)
                 choose_core_count += int(choose_core)
                 case = row["case"]
                 method = "sdf_core" if choose_core else "linear"
@@ -178,7 +181,7 @@ def apply_chooser(features: list[dict], cases: dict[str, dict], rule: dict, spli
     rows = []
     for feat in features:
         value = float(feat[rule["feature"]])
-        choose_core = value < float(rule["threshold"]) if rule["op"] == "lt" else value >= float(rule["threshold"])
+        choose_core = threshold_condition(value, str(rule["op"]), float(rule["threshold"]))
         method = "sdf_core" if choose_core else "linear"
         case_data = cases[feat["case"]]
         pred = case_data["preds"][method]
