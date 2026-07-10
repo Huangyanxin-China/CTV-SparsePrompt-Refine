@@ -3,12 +3,29 @@
 [![Project page](https://img.shields.io/badge/project-GitHub%20Pages-1f6fb2)](https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/)
 [![Data policy](https://img.shields.io/badge/data-private%20not%20included-c95f00)](docs/privacy_release_checklist.md)
 [![Python](https://img.shields.io/badge/python-3.10%2B-0a7f6a)](requirements.txt)
+[![Python CI](https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/actions/workflows/ci.yml/badge.svg)](https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/actions/workflows/ci.yml)
 
 Public implementation of a sparse-prompt clinical target volume (CTV)
 refinement workflow. The repository provides method code, de-identified real
 CT-and-contour result visualizations, environment requirements, and command
 templates. Raw clinical volumes, label volumes, model checkpoints, case
 identifiers, and study-level dataset details are not included.
+
+## Status and Intended Use
+
+This is research software for reproducible method development. It is not a
+medical device, has not been validated for clinical decision-making, and must
+not be used to replace clinician review.
+
+The repository separates development-time calibration from held-out testing.
+Oracle upper bounds are diagnostic only and must not be used to select a
+reported test configuration. See
+[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md) for the evaluation
+contract.
+
+Source-code licensing is pending confirmation by the applicable rights holders.
+Until a `LICENSE` file is added, public visibility does not grant permission
+to copy, modify, or redistribute the code.
 
 ## Real CT And Contour Result Preview
 
@@ -96,20 +113,9 @@ conda activate ctv-sparse-refine
 pip install -r requirements.txt
 ```
 
-Core dependencies are listed in `requirements.txt`:
-
-```text
-numpy
-scipy
-SimpleITK
-nibabel
-torch
-Pillow
-matplotlib
-python-pptx
-python-docx
-medpy
-```
+Runtime dependencies and compatible version ranges are listed in
+`requirements.txt`. Development and test dependencies are separated into
+`requirements-dev.txt` and `requirements-test.txt`.
 
 GPU acceleration is optional for preprocessing and useful for training the
 refinement network. The code does not download data or checkpoints by default.
@@ -131,7 +137,10 @@ The scripts accept explicit local paths. A typical nnU-Net-style layout is:
 ```
 
 Images are expected as medical volumes readable by SimpleITK, commonly
-`*.nii.gz`. Local paths and files should stay outside Git tracking.
+`*.nii.gz`. CT, target, OAR, prompt, pseudo-label, and prediction volumes must
+share size, spacing, origin, and direction. See
+[`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md). Local paths and files should
+stay outside Git tracking.
 
 ## Quick Start
 
@@ -143,16 +152,21 @@ python scripts/run_k7_preprocess_variant_screen.py --help
 python scripts/train_ctv_pseudo_refine_net.py --help
 ```
 
-Run sparse-prompt core-envelope screening:
+Run sparse-prompt core-envelope screening on a development split, not on the
+held-out test set:
 
 ```bash
 python scripts/run_sparse_prompt_core_envelope_workflow.py \
-  --ct_dir /path/to/local_dataset/imagesTs \
-  --gt_dir /path/to/local_dataset/labelsTs \
-  --oar_dir /path/to/local_oar_dataset/labelsTs \
+  --ct_dir /path/to/development/images \
+  --gt_dir /path/to/development/labels \
+  --oar_dir /path/to/development/oar_labels \
   --out_root results/demo_sparse_prompt_workflow \
   --k_values 3 5 7
 ```
+
+This screening command reports an oracle diagnostic upper bound. Freeze the
+selected profile and prompt protocol using development data before final test
+evaluation.
 
 Run K=7 preprocessing selection:
 
@@ -185,7 +199,34 @@ python scripts/train_ctv_pseudo_refine_net.py \
 ```
 
 If you use precomputed pseudo-labels, pass `--feature_source precomputed` with
-`--pseudo_train_dir`, `--pseudo_test_dir`, and `--rule_json`.
+`--pseudo_train_dir`, `--pseudo_test_dir`, and `--rule_json`. The K=7
+screen writes a directly consumable `selected_threshold_rule.json`.
+
+Run strict folder evaluation:
+
+```bash
+python scripts/evaluate_segmentation_folder.py \
+  --gt_dir /path/to/held_out_labels \
+  --pred_dir /path/to/frozen_predictions \
+  --classes 1 \
+  --class_names CTV \
+  --output_csv results/test_metrics.csv \
+  --output_json results/test_metrics.json
+```
+
+Missing predictions and physical-geometry mismatches fail by default.
+
+## Development and Testing
+
+```bash
+python -m pip install -r requirements-test.txt -r requirements-dev.txt
+python -m compileall -q models scripts utils tests
+ruff check models scripts utils tests
+pytest -q
+```
+
+The automated tests use synthetic arrays and temporary NIfTI files only. They
+do not require clinical data or external checkpoints.
 
 ## GitHub Pages Preview
 
@@ -208,7 +249,8 @@ models/        3D UNet and SDF-refinement network modules
 scripts/       Core preprocessing, refinement, evaluation, and summary scripts
 utils/         IO, geometry, connectivity, and metric helpers
 site/          Static anonymized GitHub Pages homepage
-docs/          Public release and privacy checklist
+docs/          Data, reproducibility, release, and privacy policies
+tests/         Synthetic CPU tests for geometry, rules, models, and CLIs
 ```
 
 ## External Model Adapters
@@ -238,7 +280,34 @@ find . -type f \( -name '*.nii' -o -name '*.nii.gz' -o -name '*.dcm' -o -name '*
 rg -n "/share3|Dataset0|server0|server-0|patient_[A-Za-z0-9]|CT20[0-9]{6}|P[0-9]{6,}|hospital|institutional|private cohort"
 ```
 
+## Governance
+
+- Contributions: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Security and private data-exposure reports: [`SECURITY.md`](SECURITY.md)
+- Community conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- Data, model, and asset policy:
+  [`docs/DATA_AND_MODEL_POLICY.md`](docs/DATA_AND_MODEL_POLICY.md)
+- Change history: [`CHANGELOG.md`](CHANGELOG.md)
+
+## Limitations
+
+- No clinical dataset or trained checkpoint is distributed.
+- Sparse prompts generated from complete labels are retrospective simulations.
+- The repository includes diagnostic oracle analyses; these are not deployable
+  methods and must not determine held-out test settings.
+- External adapters depend on separately licensed third-party implementations
+  and weights.
+- Demonstration images require an appropriate institutional release basis;
+  metadata removal alone is not a substitute for that approval.
+
 ## Citation
 
-Citation metadata can be added after the manuscript or preprint record is
-public. Until then, cite this repository by URL and commit hash.
+Until author order and a manuscript or preprint record are confirmed, cite this
+repository by URL and exact commit hash. A validated `CITATION.cff` should be
+added once those metadata are approved.
+
+## License
+
+No source-code license has yet been granted. A rights holder must select and
+approve the license before the repository can be described as legally open
+source.
