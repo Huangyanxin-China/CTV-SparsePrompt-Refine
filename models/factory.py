@@ -19,7 +19,7 @@ def create_model(model_name, **kwargs):
         from .sdf_refine_net import SDFRefineNet
 
         return SDFRefineNet(
-            in_channels=kwargs.get("in_channels", 8),
+            in_channels=kwargs.get("in_channels", 9),
             out_channels=kwargs.get("out_channels", 1),
             base_filters=kwargs.get("base_filters", 12),
         )
