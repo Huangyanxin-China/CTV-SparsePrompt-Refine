@@ -16,6 +16,10 @@ extend-exclude = ["site"]
 select = ["E4", "E7", "E9", "F"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
+"tests/test_models.py" = ["E402"]
+
 [tool.coverage.run]
 branch = true
 source = ["models", "scripts", "utils"]
