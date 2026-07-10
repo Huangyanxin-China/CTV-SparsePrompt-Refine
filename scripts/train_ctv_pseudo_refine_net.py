@@ -110,15 +110,20 @@ def list_cases(source: Path, oar_source: Path, split: str) -> list[CasePaths]:
     return cases
 
 
-def ctv_voxel_count(path: Path) -> int:
+def ctv_voxel_count(path: Path, target_label: int) -> int:
     arr = sitk.GetArrayFromImage(sitk.ReadImage(str(path)))
-    return int((arr > 0).sum())
+    return int((arr == int(target_label)).sum())
 
 
-def filter_nonempty_cases(cases: list[CasePaths], role: str, skipped: list[dict]) -> list[CasePaths]:
+def filter_nonempty_cases(
+    cases: list[CasePaths],
+    role: str,
+    skipped: list[dict],
+    target_label: int,
+) -> list[CasePaths]:
     kept = []
     for case in cases:
-        n = ctv_voxel_count(case.label_path)
+        n = ctv_voxel_count(case.label_path, target_label)
         if n <= 0:
             skipped.append(
                 {
@@ -550,6 +555,7 @@ def prepare_case_cache(
     refine_margin_mm: float,
     anatomy_margin_mm: float,
     rule: dict,
+    target_label: int,
     spinal_label: int,
     roi_pad_zyx: tuple[int, int, int],
     min_roi_zyx: tuple[int, int, int],
@@ -577,6 +583,7 @@ def prepare_case_cache(
             and abs(float(cached.get("refine_margin_mm", -1.0)) - float(refine_margin_mm)) < 1e-8
             and abs(float(cached.get("anatomy_margin_mm", -1.0)) - float(anatomy_margin_mm)) < 1e-8
             and cached.get("rule_signature") == rule_signature
+            and int(cached.get("target_label", -1)) == int(target_label)
             and int(cached.get("spinal_label", -1)) == int(spinal_label)
             and cached.get("roi_pad_zyx") == [int(v) for v in roi_pad_zyx]
             and cached.get("min_roi_zyx") == [int(v) for v in min_roi_zyx]
@@ -596,7 +603,7 @@ def prepare_case_cache(
     except ValueError as exc:
         raise RuntimeError(f"{case.case_id}: {exc}") from exc
 
-    gt = gt_arr > 0
+    gt = gt_arr == int(target_label)
     precomputed_pseudo = None
     if feature_source == "precomputed":
         if precomputed_pseudo_path is None:
@@ -682,6 +689,7 @@ def prepare_case_cache(
         "rule_threshold": float(rule["threshold"]),
         "rule_signature": rule_signature,
         "rule": dict(rule),
+        "target_label": int(target_label),
         "spinal_label": int(spinal_label),
         "input_signatures": input_signatures,
         "roi_pad_zyx": [int(v) for v in roi_pad_zyx],
@@ -960,6 +968,12 @@ def main() -> None:
     parser.add_argument("--feature_source", default="precomputed", choices=("precomputed", "generate"))
     parser.add_argument("--k", type=int, default=7)
     parser.add_argument(
+        "--target_label",
+        type=int,
+        default=1,
+        help="CTV label value in complete target masks.",
+    )
+    parser.add_argument(
         "--spinal_label",
         type=int,
         default=3,
@@ -1019,8 +1033,18 @@ def main() -> None:
 
     rule = load_rule(args.rule_json) if args.rule_json is not None else load_rule(Path("__embedded_k7_rule__.json"))
     skipped_rows = []
-    all_train = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Tr"), "train_pool", skipped_rows)
-    test_cases = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Ts"), "test", skipped_rows)
+    all_train = filter_nonempty_cases(
+        list_cases(args.source, args.oar_source, "Tr"),
+        "train_pool",
+        skipped_rows,
+        args.target_label,
+    )
+    test_cases = filter_nonempty_cases(
+        list_cases(args.source, args.oar_source, "Ts"),
+        "test",
+        skipped_rows,
+        args.target_label,
+    )
     train_cases, val_cases = make_train_val_split(
         all_train,
         args.val_fraction,
@@ -1089,6 +1113,7 @@ def main() -> None:
                         args.refine_margin_mm,
                         args.anatomy_margin_mm,
                         rule,
+                        args.target_label,
                         args.spinal_label,
                         roi_pad,
                         min_roi,
