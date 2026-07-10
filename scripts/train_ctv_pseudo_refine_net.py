@@ -134,16 +134,49 @@ def filter_nonempty_cases(cases: list[CasePaths], role: str, skipped: list[dict]
     return kept
 
 
-def make_train_val_split(cases: list[CasePaths], val_fraction: float, seed: int) -> tuple[list[CasePaths], list[CasePaths]]:
-    cases = list(cases)
-    rng = random.Random(int(seed))
-    rng.shuffle(cases)
-    n_val = max(1, int(round(len(cases) * float(val_fraction))))
-    n_val = min(n_val, len(cases) - 1)
-    val = sorted(cases[:n_val], key=lambda x: x.case_id)
-    train = sorted(cases[n_val:], key=lambda x: x.case_id)
-    return train, val
+def subject_id_from_case(case_id: str, separator: str = "_CT") -> str:
+    """Map scan-level case identifiers to a patient/subject grouping key."""
+    if separator and separator in case_id:
+        return case_id.split(separator, 1)[0]
+    return case_id
 
+
+def make_train_val_split(
+    cases: list[CasePaths],
+    val_fraction: float,
+    seed: int,
+    subject_separator: str = "_CT",
+) -> tuple[list[CasePaths], list[CasePaths]]:
+    """Split complete subject groups so one subject cannot cross train/validation."""
+    groups: dict[str, list[CasePaths]] = {}
+    for case in cases:
+        groups.setdefault(
+            subject_id_from_case(case.case_id, subject_separator), []
+        ).append(case)
+    subject_ids = sorted(groups)
+    if len(subject_ids) < 2:
+        raise ValueError(
+            "At least two distinct subject groups are required for a train/validation split."
+        )
+
+    rng = random.Random(int(seed))
+    rng.shuffle(subject_ids)
+    n_val = max(1, int(round(len(subject_ids) * float(val_fraction))))
+    n_val = min(n_val, len(subject_ids) - 1)
+    val_subjects = set(subject_ids[:n_val])
+    val = sorted(
+        [case for subject in val_subjects for case in groups[subject]],
+        key=lambda item: item.case_id,
+    )
+    train = sorted(
+        [
+            case
+            for subject in subject_ids[n_val:]
+            for case in groups[subject]
+        ],
+        key=lambda item: item.case_id,
+    )
+    return train, val
 
 def load_rule(path: Path) -> dict:
     if not path.exists():
@@ -919,6 +952,15 @@ def main() -> None:
     parser.add_argument("--anatomy_margin_mm", type=float, default=40.0)
     parser.add_argument("--seed", type=int, default=20260603)
     parser.add_argument("--val_fraction", type=float, default=0.18)
+    parser.add_argument(
+        "--subject_separator",
+        default="_CT",
+        help=(
+            "Case-ID separator used to group repeated scans from one subject. "
+            "For example, P001_CT1 and P001_CT2 map to P001. Pass an empty string "
+            "only when every case is known to be an independent subject."
+        ),
+    )
     parser.add_argument("--roi_pad", type=int, nargs=3, default=[12, 32, 32], metavar=("Z", "Y", "X"))
     parser.add_argument("--min_roi", type=int, nargs=3, default=[64, 128, 128], metavar=("Z", "Y", "X"))
     parser.add_argument("--patch_size", type=int, nargs=3, default=[64, 128, 128], metavar=("Z", "Y", "X"))
@@ -958,7 +1000,12 @@ def main() -> None:
     skipped_rows = []
     all_train = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Tr"), "train_pool", skipped_rows)
     test_cases = filter_nonempty_cases(list_cases(args.source, args.oar_source, "Ts"), "test", skipped_rows)
-    train_cases, val_cases = make_train_val_split(all_train, args.val_fraction, args.seed)
+    train_cases, val_cases = make_train_val_split(
+        all_train,
+        args.val_fraction,
+        args.seed,
+        subject_separator=args.subject_separator,
+    )
     if args.case_limit > 0:
         train_cases = train_cases[: max(1, args.case_limit)]
         val_cases = val_cases[: max(1, min(args.case_limit, len(val_cases)))]
@@ -971,7 +1018,22 @@ def main() -> None:
         log(f"pseudo_train_dir={args.pseudo_train_dir}")
         log(f"pseudo_test_dir={args.pseudo_test_dir}")
     log(f"out_dir={out_dir}")
-    log(f"case split: train={len(train_cases)}, val={len(val_cases)}, test={len(test_cases)}")
+    train_subjects = {
+        subject_id_from_case(case.case_id, args.subject_separator)
+        for case in train_cases
+    }
+    val_subjects = {
+        subject_id_from_case(case.case_id, args.subject_separator)
+        for case in val_cases
+    }
+    if train_subjects & val_subjects:
+        raise RuntimeError(
+            f"Subject leakage across train/validation: {sorted(train_subjects & val_subjects)}"
+        )
+    log(
+        f"case split: train={len(train_cases)} ({len(train_subjects)} subjects), "
+        f"val={len(val_cases)} ({len(val_subjects)} subjects), test={len(test_cases)}"
+    )
     log(f"skipped empty/no-prompt cases={len(skipped_rows)}")
     log("refine target: expert CTV; pseudo/core/envelope/prompt/OAR are input features only")
 
