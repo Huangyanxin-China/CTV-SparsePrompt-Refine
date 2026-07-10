@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose an improvement to the public research code
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What limitation or reproducibility need does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the API, workflow, or documentation change.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: Explain how the change can be tested without private clinical data.
+    validations:
+      required: true
+  - type: checkboxes
+    id: integrity
+    attributes:
+      label: Scientific integrity
+      options:
+        - label: This proposal does not require tuning on held-out test labels.
+          required: true
