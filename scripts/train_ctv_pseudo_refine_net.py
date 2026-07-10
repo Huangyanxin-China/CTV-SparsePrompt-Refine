@@ -291,6 +291,7 @@ def build_pseudo_features(
     refine_margin_mm: float,
     anatomy_margin_mm: float,
     rule: dict,
+    spinal_label: int = 3,
     precomputed_pseudo: np.ndarray | None = None,
 ) -> dict[str, np.ndarray | float | str | list[int]]:
     gt = gt.astype(bool)
@@ -316,7 +317,12 @@ def build_pseudo_features(
         linear[prompt] = True
 
         pseudo_methods, pseudo_support, n_pseudo_candidates = wf.build_methods(
-            prompt, selected_z, gt_img.GetSpacing(), oar, pseudo_profile
+            prompt,
+            selected_z,
+            gt_img.GetSpacing(),
+            oar,
+            pseudo_profile,
+            spinal_label=spinal_label,
         )
         pseudo_core = pseudo_methods["core_only"].astype(bool)
         sdf_base = pseudo_methods["sdf_base"].astype(bool)
@@ -388,7 +394,7 @@ def build_pseudo_features(
         pseudo = candidate_methods[method_name].astype(bool, copy=True)
         pseudo[prompt] = True
 
-    spinal = (oar == 3)
+    spinal = oar == int(spinal_label)
     anatomy_roi = anatomy_roi_from_oar(
         oar,
         prompt,
@@ -398,7 +404,12 @@ def build_pseudo_features(
     )
     if refine_mode == "profile":
         refine_methods, refine_support, n_refine_candidates = wf.build_methods(
-            prompt, selected_z, gt_img.GetSpacing(), oar, refine_profile
+            prompt,
+            selected_z,
+            gt_img.GetSpacing(),
+            oar,
+            refine_profile,
+            spinal_label=spinal_label,
         )
         core = refine_methods["core_only"].astype(bool)
         envelope = refine_methods["envelope"].astype(bool)
@@ -539,6 +550,7 @@ def prepare_case_cache(
     refine_margin_mm: float,
     anatomy_margin_mm: float,
     rule: dict,
+    spinal_label: int,
     roi_pad_zyx: tuple[int, int, int],
     min_roi_zyx: tuple[int, int, int],
     force: bool = False,
@@ -565,6 +577,7 @@ def prepare_case_cache(
             and abs(float(cached.get("refine_margin_mm", -1.0)) - float(refine_margin_mm)) < 1e-8
             and abs(float(cached.get("anatomy_margin_mm", -1.0)) - float(anatomy_margin_mm)) < 1e-8
             and cached.get("rule_signature") == rule_signature
+            and int(cached.get("spinal_label", -1)) == int(spinal_label)
             and cached.get("roi_pad_zyx") == [int(v) for v in roi_pad_zyx]
             and cached.get("min_roi_zyx") == [int(v) for v in min_roi_zyx]
             and cached.get("input_signatures") == input_signatures
@@ -617,6 +630,7 @@ def prepare_case_cache(
         refine_margin_mm,
         anatomy_margin_mm,
         rule,
+        spinal_label=spinal_label,
         precomputed_pseudo=precomputed_pseudo,
     )
     envelope = features["envelope"].astype(bool)
@@ -668,6 +682,7 @@ def prepare_case_cache(
         "rule_threshold": float(rule["threshold"]),
         "rule_signature": rule_signature,
         "rule": dict(rule),
+        "spinal_label": int(spinal_label),
         "input_signatures": input_signatures,
         "roi_pad_zyx": [int(v) for v in roi_pad_zyx],
         "min_roi_zyx": [int(v) for v in min_roi_zyx],
@@ -944,6 +959,12 @@ def main() -> None:
     parser.add_argument("--rule_json", type=Path, default=None, help="Optional preprocessing-rule JSON; embedded K=7 rule is used when omitted.")
     parser.add_argument("--feature_source", default="precomputed", choices=("precomputed", "generate"))
     parser.add_argument("--k", type=int, default=7)
+    parser.add_argument(
+        "--spinal_label",
+        type=int,
+        default=3,
+        help="OAR label value used for spinal-cord exclusion.",
+    )
     parser.add_argument("--strategy", default="even_nonempty")
     parser.add_argument("--pseudo_profile", default="current", choices=sorted(wf.PROFILES.keys()))
     parser.add_argument("--refine_profile", default="high_recall", choices=sorted(wf.PROFILES.keys()))
@@ -1068,6 +1089,7 @@ def main() -> None:
                         args.refine_margin_mm,
                         args.anatomy_margin_mm,
                         rule,
+                        args.spinal_label,
                         roi_pad,
                         min_roi,
                         force=args.force_cache,
