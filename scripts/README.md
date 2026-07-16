@@ -75,18 +75,37 @@ Folder-level segmentation metrics:
 
 ```bash
 python scripts/evaluate_segmentation_folder.py \
-  --pred_dir /path/to/predictions \
   --gt_dir /path/to/local_dataset/labelsTs \
-  --out_csv results/demo_eval/per_case_metrics.csv
+  --pred_dir /path/to/predictions \
+  --classes 1 \
+  --class_names CTV \
+  --output_csv results/demo_eval/per_sample_metrics.csv \
+  --output_json results/demo_eval/summary.json
 ```
 
 Dice-only evaluation:
 
 ```bash
 python scripts/evaluate_segmentation_dice_only.py \
+  --gt_dir /path/to/local_dataset/labelsTs \
   --pred_dir /path/to/predictions \
-  --gt_dir /path/to/local_dataset/labelsTs
+  --classes 1 \
+  --class_names CTV \
+  --output_csv results/demo_eval/dice_per_sample.csv \
+  --output_json results/demo_eval/dice_summary.json
 ```
+
+## Visualization
+
+Preview the de-identified static project site locally:
+
+```bash
+python -m http.server 8000 --directory site
+```
+
+Open `http://localhost:8000` in a browser. The committed site contains only
+pre-rendered display assets; the source medical volumes and private rendering
+pipeline are not included.
 
 ## Privacy Notes
 

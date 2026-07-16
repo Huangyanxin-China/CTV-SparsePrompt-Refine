@@ -1,244 +1,302 @@
 # CTV Sparse-Prompt Refinement
 
-[![Project page](https://img.shields.io/badge/project-GitHub%20Pages-1f6fb2)](https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/)
-[![Data policy](https://img.shields.io/badge/data-private%20not%20included-c95f00)](docs/privacy_release_checklist.md)
-[![Python](https://img.shields.io/badge/python-3.10%2B-0a7f6a)](requirements.txt)
+[![GitHub Pages](https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/actions/workflows/pages.yml/badge.svg)](https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine/actions/workflows/pages.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](requirements.txt)
+[![Data policy](https://img.shields.io/badge/data-de--identified%20renders%20only-157F3B)](docs/privacy_release_checklist.md)
+![Use](https://img.shields.io/badge/use-research%20only-B42318)
 
-Public implementation of a sparse-prompt clinical target volume (CTV)
-refinement workflow. The repository provides method code, de-identified real
-CT-and-contour result visualizations, environment requirements, and command
-templates. Raw clinical volumes, label volumes, model checkpoints, case
-identifiers, and study-level dataset details are not included.
+Public research implementation of a sparse-prompt clinical target volume (CTV)
+completion and refinement workflow. The repository provides data-agnostic
+preprocessing, optional 3D refinement, evaluation utilities, and a visual
+project page. Reversible medical volumes, identifying metadata, model
+checkpoints, and private study descriptions are not included.
 
-## Real CT And Contour Result Preview
+**[Project page](https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/)** |
+**[Complete slice viewer](https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/real-results/single-case-complete-slices.html)** |
+**[Scripts guide](scripts/README.md)** |
+**[Privacy checklist](docs/privacy_release_checklist.md)**
 
-<p align="center">
-  <strong>Dynamic single-case slice display</strong><br>
-  <img src="site/assets/real_ct_single_case_slices.gif" width="760" alt="Dynamic de-identified real CT slice display with expert drawing and sparse-prompt refinement contours">
-</p>
-
-<p align="center">
-  <strong>Static multi-method comparison</strong><br>
-  <img src="site/assets/real_ct_multi_method_comparison.png" width="760" alt="Static de-identified real CT comparison from an original-grid ROI crop">
-</p>
+> **Research use only:** This code and its visual examples are not a medical
+> device and are not intended for clinical decision-making.
 
 <p align="center">
-  <strong>Dynamic workflow display</strong><br>
-  <img src="site/assets/real_ct_workflow_demo.gif" width="760" alt="Dynamic original-grid ROI crop display on de-identified real CT and expert drawing">
+  <img src="site/assets/real_ct_workflow_demo.gif" width="1000" alt="Animated de-identified CT ROI comparison of expert reference, nnU-Net, MedSAM2, linear interpolation, and sparse-prompt refinement contours">
 </p>
 
-The repository homepage shows the three public result views directly. These
-assets are rendered 2D CT crops with contour overlays from one de-identified
-case. Original DICOM/NIfTI volumes, case identifiers, acquisition dates, local
-paths, and scan metadata are not included.
+<p align="center"><em>Dynamic method comparison rendered from de-identified 2D CT crops. No source volume, identifier, acquisition date, or local path is embedded.</em></p>
 
-The workflow and multi-method comparison are rendered from original CT-grid
-outputs after applying the same ROI crop. They show Expert drawing, nnU-Net,
-MedSAM2 K=7 mask, Linear Interpolation, and Raw ADP-Refine (K=7).
+## Overview
 
-- Single-case complete slice display:
-  [`site/real-results/single-case-complete-slices.html`](site/real-results/single-case-complete-slices.html)
-- Static multi-method comparison:
-  [`site/assets/real_ct_multi_method_comparison.png`](site/assets/real_ct_multi_method_comparison.png)
-- Dynamic workflow display:
-  [`site/assets/real_ct_workflow_demo.gif`](site/assets/real_ct_workflow_demo.gif)
+Sparse 2D target prompts provide strong local information but do not directly
+define a complete 3D target. This project propagates those prompts with signed
+distance fields (SDFs), constructs anatomy-constrained core, support, and
+envelope priors, and optionally trains a compact 3D network to refine the dense
+pseudo target.
 
-When GitHub Pages is enabled, the rendered project page is available at:
+| Component | Purpose |
+| --- | --- |
+| Sparse-prompt propagation | Convert selected 2D target masks into a dense 3D SDF prior |
+| Candidate construction | Build core, support, and envelope regions for auditable completion |
+| Anatomy constraints | Restrict candidate regions using aligned organ-at-risk masks |
+| Optional refinement | Learn a pseudo-to-target correction from CT and geometric priors |
+| Evaluation | Report overlap and surface metrics from folder-level predictions |
 
-```text
-https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/
+The public package contains method code and rendered demonstrations. It does
+not contain a dataset, pretrained weights, or private experiment records.
+
+## Results preview
+
+<p align="center">
+  <img src="site/assets/real_ct_multi_method_comparison.png" width="1000" alt="De-identified original-grid CT ROI comparison across expert reference, nnU-Net, MedSAM2, linear interpolation, and sparse-prompt refinement">
+</p>
+
+<p align="center"><em>Static multi-method comparison using the same ROI for every method. Colors distinguish the expert reference from each prediction.</em></p>
+
+<details>
+<summary>Open the complete target-range slice animation</summary>
+
+<p align="center">
+  <img src="site/assets/real_ct_single_case_slices.gif" width="700" alt="Animated de-identified CT slices with expert reference and sparse-prompt refinement contours">
+</p>
+
+The corresponding interactive gallery is available in the
+[complete slice viewer](https://huangyanxin-china.github.io/CTV-SparsePrompt-Refine/real-results/single-case-complete-slices.html).
+
+</details>
+
+---
+
+The visual assets are pre-rendered, de-identified 2D crops. They are included
+for qualitative inspection only and cannot be used to reconstruct the source
+medical volumes.
+
+## Method
+
+```mermaid
+flowchart LR
+    accTitle: Sparse-prompt CTV refinement workflow
+    accDescr: Aligned CT, organ-at-risk masks, and sparse target prompts are converted into geometric priors, a dense pseudo target, and an optional refined 3D target mask.
+
+    aligned_ct["Aligned planning CT"]
+    oar_masks["Aligned OAR masks"]
+    sparse_prompts["Sparse 2D CTV prompts"]
+    sdf_prior["SDF propagation"]
+    candidate_space["Anatomical candidate space"]
+    geometric_priors["Core, support, and envelope priors"]
+    pseudo_target["Dense pseudo target"]
+    refiner["Optional 3D refinement network"]
+    dense_mask["Dense 3D CTV mask"]
+
+    sparse_prompts --> sdf_prior
+    aligned_ct --> candidate_space
+    oar_masks --> candidate_space
+    sdf_prior --> geometric_priors
+    candidate_space --> geometric_priors
+    geometric_priors --> pseudo_target
+    aligned_ct --> refiner
+    sparse_prompts --> refiner
+    pseudo_target --> refiner
+    refiner --> dense_mask
+
+    classDef input fill:#E8F1FB,stroke:#2F6F9F,color:#172033
+    classDef process fill:#EAF7EF,stroke:#25834A,color:#172033
+    classDef output fill:#FFF3D6,stroke:#B7791F,color:#172033
+    class aligned_ct,oar_masks,sparse_prompts input
+    class sdf_prior,candidate_space,geometric_priors,pseudo_target,refiner process
+    class dense_mask output
 ```
 
-## What This Repository Contains
+The preprocessing stage is usable without the refinement network. The network
+stage consumes the generated pseudo target and geometric channels, then writes
+checkpoints, validation summaries, and test-set predictions to the selected
+output directory.
 
-- SDF propagation from sparse 2D target prompts.
-- Core-envelope candidate construction for auditable 3D target completion.
-- Support-intersection preprocessing and K-value screening utilities.
-- A lightweight pseudo-to-true 3D refinement network.
-- Generic evaluation utilities for overlap and surface metrics.
-- A static GitHub Pages homepage with de-identified real CT crops, expert
-  drawings, and method contour overlays.
+## Installation
 
-## Data Privacy Boundary
+### Requirements
 
-This public package intentionally excludes private raw data, reversible medical
-volumes, generated prediction volumes, and identifying metadata. You will need
-to supply your own local data paths when running the scripts. Do not commit
-local data, generated predictions, checkpoints, logs, or institutional
-metadata.
+| Item | Requirement |
+| --- | --- |
+| Python | 3.10 or newer |
+| Core packages | NumPy, SciPy, SimpleITK, NiBabel, PyTorch, Pillow, Matplotlib, MedPy |
+| GPU | Optional for preprocessing; recommended for network training |
+| Input format | Volumes readable by SimpleITK, commonly NIfTI |
 
-The public display assets are de-identified PNG/GIF/HTML renderings derived
-from 2D CT crops and segmentation contours. They omit original DICOM/NIfTI
-volumes, local case names, acquisition dates, private paths, and clinical
-metadata.
+The dependency file is intentionally lightweight and does not pin a CUDA
+build. Install the PyTorch build appropriate for your system when GPU training
+is required.
 
-## Visual Result Pages
-
-- `site/index.html`: public homepage with workflow, setup, privacy boundary, and
-  result-display sections.
-- `site/real-results/single-case-complete-slices.html`: complete target-range
-  axial slice gallery rendered from de-identified real CT crops and contours.
-- `site/assets/real_ct_single_case_slices.gif`: dynamic single-case CT slice
-  display with expert drawing and sparse-prompt refinement contours.
-- `site/assets/real_ct_multi_method_comparison.png`: static original-grid ROI
-  comparison of expert drawing, nnU-Net, MedSAM2 K=7 mask, Linear
-  Interpolation, and Raw ADP-Refine (K=7).
-- `site/assets/real_ct_workflow_demo.gif`: dynamic workflow display on real CT
-  crops using the same original-grid ROI crop and method labels.
-
-## Environment
-
-Recommended base environment:
+### Setup
 
 ```bash
+git clone https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine.git
+cd CTV-SparsePrompt-Refine
+
 conda create -n ctv-sparse-refine python=3.10 -y
 conda activate ctv-sparse-refine
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Core dependencies are listed in `requirements.txt`:
+Verify the core environment:
 
-```text
-numpy
-scipy
-SimpleITK
-nibabel
-torch
-Pillow
-matplotlib
-python-pptx
-python-docx
-medpy
+```bash
+python -c "import SimpleITK, nibabel, numpy, scipy, torch; print('environment ready')"
 ```
 
-GPU acceleration is optional for preprocessing and useful for training the
-refinement network. The code does not download data or checkpoints by default.
+An optional SAM-Med3D adapter is included, but third-party source code and
+checkpoints are not bundled. Configure local installations only when needed:
 
-## Expected Local Data Layout
+```bash
+export SAM_MED3D_ROOT=/path/to/SAM-Med3D
+export SAM_MED3D_CKPT=/path/to/checkpoint.pth
+```
 
-The scripts accept explicit local paths. A typical nnU-Net-style layout is:
+## Data interface
+
+All inputs must be supplied locally. CT, target labels, sparse prompts, and OAR
+masks belonging to the same sample must share the same array geometry and
+physical coordinate system.
 
 ```text
-/path/to/local_dataset/
+/path/to/local_target_data/
   imagesTr/
   labelsTr/
   imagesTs/
   labelsTs/
 
-/path/to/local_oar_dataset/
+/path/to/local_oar_data/
   labelsTr/
   labelsTs/
 ```
 
-Images are expected as medical volumes readable by SimpleITK, commonly
-`*.nii.gz`. Local paths and files should stay outside Git tracking.
+Keep these directories outside the repository. The committed `.gitignore`
+excludes common medical-image volumes, model artifacts, predictions, logs, and
+generated result folders.
 
-## Quick Start
+## Quick start
 
-Inspect command-line options:
+Inspect the available options before running a workflow:
 
 ```bash
 python scripts/run_sparse_prompt_core_envelope_workflow.py --help
 python scripts/run_k7_preprocess_variant_screen.py --help
 python scripts/train_ctv_pseudo_refine_net.py --help
+python scripts/evaluate_segmentation_folder.py --help
 ```
 
-Run sparse-prompt core-envelope screening:
+### Sparse-prompt preprocessing
+
+Run the SDF and core-envelope workflow across several prompt budgets:
 
 ```bash
 python scripts/run_sparse_prompt_core_envelope_workflow.py \
-  --ct_dir /path/to/local_dataset/imagesTs \
-  --gt_dir /path/to/local_dataset/labelsTs \
-  --oar_dir /path/to/local_oar_dataset/labelsTs \
-  --out_root results/demo_sparse_prompt_workflow \
+  --ct_dir /path/to/local_target_data/imagesTs \
+  --gt_dir /path/to/local_target_data/labelsTs \
+  --oar_dir /path/to/local_oar_data/labelsTs \
+  --out_root results/sparse_prompt_workflow \
   --k_values 3 5 7
 ```
 
-Run K=7 preprocessing selection:
+Screen the K=7 preprocessing variants:
 
 ```bash
 python scripts/run_k7_preprocess_variant_screen.py \
-  --train_label_dir /path/to/local_dataset/labelsTr \
-  --test_label_dir /path/to/local_dataset/labelsTs \
-  --out_dir results/demo_k7_screen
+  --train_label_dir /path/to/local_target_data/labelsTr \
+  --test_label_dir /path/to/local_target_data/labelsTs \
+  --out_dir results/k7_screen
 ```
 
-Run a traditional sparse-slice interpolation baseline:
+### Training and test inference
 
-```bash
-python scripts/run_traditional_linear_mask_interpolation_baseline.py \
-  --gt_dir /path/to/local_dataset/labelsTs \
-  --prompt_dir /path/to/local_sparse_prompts \
-  --out_dir results/demo_linear_interpolation \
-  --write_predictions
-```
-
-Train the pseudo-to-true refinement network:
+Generate pseudo targets and train the refinement network in one command:
 
 ```bash
 python scripts/train_ctv_pseudo_refine_net.py \
-  --source /path/to/local_dataset \
-  --oar_source /path/to/local_oar_dataset \
+  --source /path/to/local_target_data \
+  --oar_source /path/to/local_oar_data \
   --feature_source generate \
-  --out_dir results/demo_refine_train \
+  --out_dir results/refinement_run \
   --max_epochs 80
 ```
 
-If you use precomputed pseudo-labels, pass `--feature_source precomputed` with
-`--pseudo_train_dir`, `--pseudo_test_dir`, and `--rule_json`.
+On completion, the command writes the selected checkpoint under
+`results/refinement_run/checkpoints/` and test predictions under
+`results/refinement_run/predictions_test/`. Add `--amp` for mixed-precision
+CUDA training. The current public release combines training and test inference;
+it does not provide a separate checkpoint-only inference entry point.
 
-## GitHub Pages Preview
+### Evaluation
 
-The homepage is a static, anonymized page:
+Evaluate a prediction folder with explicit class labels:
+
+```bash
+python scripts/evaluate_segmentation_folder.py \
+  --gt_dir /path/to/local_target_data/labelsTs \
+  --pred_dir results/refinement_run/predictions_test \
+  --classes 1 \
+  --class_names CTV \
+  --output_csv results/evaluation/per_sample.csv \
+  --output_json results/evaluation/summary.json
+```
+
+Additional preprocessing, baseline, and evaluation commands are documented in
+the [scripts guide](scripts/README.md).
+
+## Visualization
+
+Preview the same static site deployed by GitHub Pages:
 
 ```bash
 python -m http.server 8000 --directory site
 ```
 
-Then open:
+Open `http://localhost:8000` in a browser. The site includes the dynamic
+workflow comparison, the static multi-method panel, and the complete slice
+viewer. Source medical volumes and the private rendering pipeline are not part
+of the public package.
 
-```text
-http://localhost:8000
-```
+Pushes to `main` deploy `site/` through
+[the Pages workflow](.github/workflows/pages.yml).
 
-## Repository Layout
+## Repository structure
 
-```text
-models/        3D UNet and SDF-refinement network modules
-scripts/       Core preprocessing, refinement, evaluation, and summary scripts
-utils/         IO, geometry, connectivity, and metric helpers
-site/          Static anonymized GitHub Pages homepage
-docs/          Public release and privacy checklist
-```
+| Path | Contents |
+| --- | --- |
+| `models/` | 3D network modules and the optional SAM-Med3D adapter |
+| `scripts/` | Data-agnostic preprocessing, training, evaluation, and summary entry points |
+| `utils/` | Volume IO, geometry, connectivity, and metric helpers |
+| `site/` | Static GitHub Pages project site and de-identified rendered assets |
+| `docs/` | Public release and privacy checks |
+| `.github/workflows/pages.yml` | GitHub Pages deployment workflow |
 
-## External Model Adapters
+## Privacy and release policy
 
-Optional external adapters do not ship third-party source trees or checkpoints.
-If you use the SAM-Med3D adapter, configure local paths with environment
-variables or explicit arguments:
-
-```bash
-export SAM_MED3D_ROOT=/path/to/SAM-Med3D
-export SAM_MED3D_CKPT=/path/to/sam_med3d_checkpoint.pth
-```
-
-## Release Checklist
-
-Before pushing a public release, run the checks in:
-
-```text
-docs/privacy_release_checklist.md
-```
-
-At minimum, verify:
-
-```bash
-git status --short
-find . -type f \( -name '*.nii' -o -name '*.nii.gz' -o -name '*.dcm' -o -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.npz' -o -name '*.zip' -o -name '*.docx' -o -name '*.pdf' \)
-rg -n "/share3|Dataset0|server0|server-0|patient_[A-Za-z0-9]|CT20[0-9]{6}|P[0-9]{6,}|hospital|institutional|private cohort"
-```
+The repository may include de-identified rendered 2D CT crops with contour
+overlays. It must not include reversible medical volumes, DICOM or NIfTI data,
+sample identifiers, dates, institutions, private paths, checkpoints, or
+dataset-level descriptions. Review
+[`docs/privacy_release_checklist.md`](docs/privacy_release_checklist.md) before
+every public release.
 
 ## Citation
 
-Citation metadata can be added after the manuscript or preprint record is
-public. Until then, cite this repository by URL and commit hash.
+No archival paper or DOI is bundled with this release. Until a formal citation
+record is published, cite the repository and the exact commit used:
+
+```bibtex
+@software{ctv_sparse_prompt_refinement,
+  author  = {Huangyanxin-China},
+  title   = {CTV Sparse-Prompt Refinement},
+  year    = {2026},
+  url     = {https://github.com/Huangyanxin-China/CTV-SparsePrompt-Refine},
+  note    = {Specify the accessed Git commit}
+}
+```
+
+## License
+
+This repository does not currently include an open-source license. Unless a
+license file is added, the source is publicly viewable but no permission is
+granted to copy, modify, or redistribute it. Contact the repository owner
+before reuse.
